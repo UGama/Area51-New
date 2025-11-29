@@ -1,0 +1,527 @@
+/* styles.css */
+.copyright{
+  position: fixed;
+  right: calc(12px + env(safe-area-inset-right));
+  bottom: calc(12px + env(safe-area-inset-bottom));
+  padding: 6px 10px;
+  font-size: 12px;
+  color: #5a4c78;
+  background: rgba(255,255,255,.92);
+  border: 1px solid #e9e3f3;
+  border-radius: 10px;
+  box-shadow: 0 4px 14px rgba(0,0,0,.08);
+  z-index: 3000;
+}
+@media (max-width: 520px){
+  .copyright{ font-size: 11px; padding: 5px 8px; }
+}
+
+:root {
+  --brand: #4e2a6c;
+  --topbar-h: 80px;
+  --card-bg: #fff;
+  --card-radius: 16px;
+  --card-shadow: 0 6px 16px rgba(0,0,0,.08);
+}
+
+html, body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+
+.topbar {
+  display: grid;
+  grid-template-columns: auto 1fr auto; /* left logo | center title | right (empty) */
+  align-items: center;
+  background: var(--brand);
+  color: #fff;
+  height: var(--topbar-h);
+  padding: 12px 16px;
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  box-shadow: 0 2px 6px rgba(0,0,0,.15);
+}
+.topbar .logo {
+  height: var(--topbar-h);
+  width: auto;
+  object-fit: contain;
+  display: block;
+}
+.topbar .brand {
+  justify-self: center;   /* centers the title in the middle column */
+  font: 600 28px/1 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+}
+
+.page { padding: 16px; }
+
+/* Two-column layout */
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr; /* historical wider, today's narrower */
+  gap: 16px;
+}
+@media (max-width: 900px) {
+  .layout { grid-template-columns: 1fr; }
+}
+
+.card {
+  background: var(--card-bg);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+  padding: 16px;
+}
+.card h2 {
+  margin: 0 0 12px 0;
+  color: #331b48;
+  font-size: 20px;
+  text-align: center;
+}
+
+/* Table polish (shared) */
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 18px;
+}
+
+/* Action bars under each leaderboard */
+.actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.btn {
+  appearance: none;
+  border: 1px solid #d6cbe3;
+  background: #f7f3fb;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn:hover { background: #efe7f8; }
+.btn:active { transform: translateY(1px); }
+
+th, td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #eee;
+  text-align: left;
+}
+thead th {
+  background: #faf7fc;
+}
+/* Simple modal */
+.modal.hidden { display: none; }
+.modal {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.35);
+  display: grid; place-items: center;
+  z-index: 2000;
+}
+.modal__panel {
+  width: min(92vw, 420px);
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 12px 40px rgba(0,0,0,.2);
+  padding: 16px;
+}
+.modal__title { margin: 0 0 12px 0; font-size: 18px; color: #331b48; }
+.modal__field { display: grid; gap: 6px; margin-bottom: 12px; }
+.modal__field input {
+  padding: 10px 12px; border-radius: 10px; border: 1px solid #ddd;
+}
+.modal__actions { display: flex; gap: 8px; justify-content: flex-end; }
+.btn--primary { background: #4e2a6c; color: #fff; border-color: #4e2a6c; }
+.btn--primary:hover { filter: brightness(1.05); }
+
+/* ===== Edit mode visuals ===== */
+.card.editing {
+  outline: 3px solid #ffb703;            /* bold amber frame */
+  box-shadow: 0 8px 20px rgba(255,183,3,.35);
+  position: relative;
+}
+.card.editing::after {
+  content: "EDIT MODE";
+  position: absolute; top: 8px; right: 12px;
+  font-weight: 800; font-size: 12px;
+  background: #ffb703; color: #1a1a1a;
+  padding: 2px 8px; border-radius: 999px;
+  letter-spacing: .3px;
+}
+table[contenteditable="true"] {
+  background: #fff7db;                    /* soft amber sheet */
+  cursor: text;
+}
+table[contenteditable="true"] td {
+  outline: 1px dashed #e0a800;            /* show editable cells */
+  outline-offset: -3px;
+}
+.btn.is-editing {
+  background: #ffb703; color: #1a1a1a; border-color: #e0a800;
+}
+.edit-tip {
+  margin-top: 8px; padding: 8px 10px; border-radius: 8px;
+  background: #fff1c2; color: #4a3b00; font-size: 12px;
+  border: 1px solid #ffe08a;
+}
+/* Row delete button (shown only in Edit mode) */
+.row-del {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px; height: 26px;
+  border-radius: 6px;
+  border: 1px solid #ff8b8b;
+  background: #ffe5e5;
+  color: #b30000;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.row-del:hover { background: #ffd1d1; }
+th.del-col, td.del-col { text-align: center; width: 40px; }
+.btn--danger { background: #e53935; color: #fff; border-color: #d32f2f; }
+.btn--danger:hover { filter: brightness(1.05); }
+
+/* Split actions: left cluster vs right cluster */
+.actions { 
+  display: flex; 
+  justify-content: space-between;  /* push left & right apart */
+  gap: 8px; 
+  margin-top: 12px; 
+  flex-wrap: wrap;
+}
+.actions-left,
+.actions-right {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* Optional: on narrow screens, stack groups */
+@media (max-width: 520px) {
+  .actions { gap: 12px; }
+  .actions-left, .actions-right { width: 100%; justify-content: space-between; }
+}
+/* Vertical separator + left-pointing arrow for the Merge button */
+.btn--left-sep {
+  position: relative;
+  margin-left: 14px;      /* space before the separator line */
+  padding-left: 28px;     /* space for the arrow inside the button */
+}
+
+/* the vertical line just to the left of the button */
+.btn--left-sep::before {
+  content: "";
+  position: absolute;
+  left: -10px;            /* place the line just before the button */
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1px;
+  height: 1.6em;
+  background: #d6cbe3;
+  display: none;
+}
+
+/* the left-pointing arrow inside the button */
+.btn--left-sep::after {
+  content: "";
+  position: absolute;
+  left: 8px;              /* arrow sits inside the button */
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+  border-right: 8px solid currentColor; /* ← colored edge points LEFT */
+}
+
+/* tiny nudge on hover (optional) */
+.btn--left-sep:hover::after {
+  transform: translateY(-50%) translateX(-1px);
+}
+.card table {
+  margin-top: 20px;
+  margin-bottom: 20px; /* optional */
+}
+
+/* ===== Custom numeric keypad ===== */
+.numpad.hidden { display: none; }
+.numpad {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.35);
+  display: grid; place-items: center;
+  z-index: 3000;
+}
+.numpad__panel {
+  width: min(92vw, 360px);
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 12px 40px rgba(0,0,0,.2);
+  padding: 16px;
+  margin-top: 0;
+}
+.numpad__display {
+  margin-bottom: 10px;
+}
+#numpad-display {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  font-size: 20px;
+  text-align: right;
+}
+.numpad__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.numpad__grid button {
+  padding: 14px 0;
+  border-radius: 10px;
+  border: 1px solid #d6cbe3;
+  background: #f7f3fb;
+  font-size: 20px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.numpad__grid button:hover { background: #efe7f8; }
+.numpad__del { color: #b30000; border-color: #ff8b8b; background: #ffe5e5; }
+.numpad__del:hover { background: #ffd1d1; }
+.numpad__actions {
+  display: flex; gap: 8px; justify-content: flex-end;
+  margin-top: 10px;
+}
+/* Keep everything in the keypad box */
+.numpad__panel { overflow: hidden; }
+
+/* Hard reset ONLY the keypad display input */
+.numpad .numpad__display input {
+  all: unset;                 /* wipe inherited app styles */
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  height: 44px;               /* or 48px, your call */
+  padding: 10px 12px;
+  border: 1px solid #d0d0d0;
+  border-radius: 10px;
+  background: #fff;
+  color: #111;
+  font: 600 20px/1.2 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  text-align: right;
+  /* make sure no weird offsets sneak in */
+  margin: 0;
+  position: static;
+  transform: none;
+  top: auto; left: auto; right: auto; bottom: auto;
+}
+/* Make room for a medal inside the right edge of the last column */
+td.has-medal {
+  position: relative;
+  padding-right: 32px;        /* room for the medal */
+}
+
+/* Medal bubble pinned to the inner-right of the cell */
+td.has-medal::after {
+  content: "";                 /* set below via data-medal attribute */
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 20px;             /* emoji size; tweak if needed */
+  line-height: 1;
+}
+
+/* Choose which medal to show (emoji for simplicity, looks great everywhere) */
+td.has-medal[data-medal="gold"]::after   { content: "🥇"; }
+td.has-medal[data-medal="silver"]::after { content: "🥈"; }
+td.has-medal[data-medal="bronze"]::after { content: "🥉"; }
+
+/* Empty-state row inside tables */
+.table-empty {
+  color: #000;
+  text-align: center;
+  font-style: italic;
+}
+
+/* Rules under the tables: small, black text */
+.rules {
+  margin-top: 16px;
+  margin-bottom: 100px;
+  color: #000;
+  font-size: 16px;          /* make it small; change to 13px if you want a bit larger */
+  line-height: 1.35;
+  margin-right: 32px;
+  margin-left: 32px;   /* ← nudge to the right */
+  text-align: left;
+}
+
+.rules__title {
+  margin: 0 0 6px 0;
+  font-size: 20px;          /* keep the heading small too */
+  font-weight: 700;         /* small but clear */
+  color: #000;
+}
+
+.rules__list {
+  margin: 0;
+  padding-left: 18px;       /* indentation for numbers */
+}
+
+/* --- place the Add modal near the top (not fully centered) --- */
+.modal--top {
+  align-items: flex-start;           /* push panel toward top */
+  padding-top: calc(16px + env(safe-area-inset-top));
+}
+.modal--top .modal__panel {
+  margin-top: 8px;                   /* tiny extra spacing under topbar */
+}
+
+/* a little breathing room around inputs in the modal */
+.modal__field input {
+  margin-top: 2px;
+}
+
+/* --- anchored numpad: appears under the input instead of page center --- */
+.numpad--anchored {
+  /* no dim backdrop, so UI feels like a popover under the input */
+  background: transparent;
+  display: block;
+  pointer-events: none;              /* let clicks pass through backdrop area */
+}
+.numpad--anchored .numpad__panel {
+  position: fixed;                   /* we’ll set top/left via JS */
+  pointer-events: auto;              /* panel itself is interactive */
+  width: min(92vw, 360px);
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* small horizontal nudge for overall page so it’s not “stuck” to edges */
+.page {
+  padding-left: calc(24px + env(safe-area-inset-left));
+  padding-right: calc(24px + env(safe-area-inset-right));
+}
+/* Keep modal centered (your default), and ensure panels stack above page */
+.modal__panel {
+  z-index: 1100; /* modal content above backdrop */
+}
+
+/* Anchored keypad that we position under the input via JS */
+.numpad--anchored {
+  background: transparent;      /* remove dim backdrop for popover feel */
+  display: block;
+  pointer-events: none;         /* clicks pass through the backdrop area */
+}
+
+.numpad--anchored .numpad__panel {
+  position: fixed;              /* we control left/top in JS */
+  pointer-events: auto;         /* keypad itself is clickable */
+  width: min(92vw, 360px);      /* responsive max width */
+  z-index: 1200;                /* above the modal panel */
+  /* optional: soften */
+  border-radius: 16px;
+}
+
+/* small breathing room around the Time input inside the modal */
+#add-score {
+  margin-bottom: 6px;           /* helps visually separate input and keypad */
+}
+/* Keep the add modal centered; ensure it stacks above the page */
+.modal { display: grid; place-items: center; }
+.modal__panel { z-index: 1100; }
+
+/* Make the page sit comfortably under the sticky topbar */
+.page {
+  padding-left: calc(24px + env(safe-area-inset-left));
+  padding-right: calc(24px + env(safe-area-inset-right));
+  padding-top: 16px; /* content under topbar */
+}
+
+/* Use an "anchored popover" keypad we can place via JS */
+.numpad--anchored {
+  background: transparent;   /* remove dim backdrop */
+  display: block;
+  pointer-events: none;      /* clicks pass through backdrop area */
+}
+.numpad--anchored .numpad__panel {
+  position: fixed;           /* left/top set by JS */
+  pointer-events: auto;
+  width: min(92vw, 360px);
+  z-index: 1200;             /* above modal panel */
+  border-radius: 16px;
+}
+
+/* small visual gap under the Time input inside modal */
+#add-score { margin-bottom: 8px; }
+/* Put the Add modal panel just under the sticky topbar (horizontally centered) */
+.modal--under-topbar {
+  align-items: flex-start;  /* push panel toward the top */
+  padding-top: calc(var(--topbar-h) + 24px + env(safe-area-inset-top));
+}
+.modal--under-topbar .modal__panel {
+  margin-inline: auto;      /* keep the panel centered horizontally */
+}
+
+/* Make sure the keypad can sit above the panel and be positioned by JS */
+.numpad--anchored {
+  background: transparent;  /* no dark backdrop for the anchored keypad */
+  display: block;
+  pointer-events: none;
+}
+.numpad--anchored .numpad__panel {
+  position: fixed;          /* JS sets left/top under the input */
+  pointer-events: auto;
+  width: min(92vw, 360px);
+  z-index: 1200;            /* above .modal__panel (1100) so it’s visible */
+}
+
+/* small gap under the Time input so it never “touches” the keypad */
+#add-score { margin-bottom: 8px; }
+/* Keep the add panel under the topbar but centered horizontally */
+.modal--under-topbar {
+  align-items: flex-start;
+  padding-top: calc(var(--topbar-h) + 24px + env(safe-area-inset-top));
+}
+.modal--under-topbar .modal__panel {
+  margin-inline: auto; /* <-- horizontal center */
+}
+
+/* Make the keypad horizontally centered; JS only sets its TOP */
+.numpad--anchored .numpad__panel {
+  position: fixed;
+  width: min(92vw, 360px);
+  left: 50%;
+  transform: translateX(-50%);  /* <-- horizontal center */
+  z-index: 1200;
+}
+
+/* tiny space between input and keypad */
+#add-score { margin-bottom: 8px; }
+
+/* Venue switcher (rounded rectangles) */
+.venue-switch{
+  display:flex; gap:8px; align-items:center;
+  margin: 10px 0 16px; flex-wrap:wrap;
+}
+.venue-pill{
+  appearance:none; border:1px solid #d6cbe3;
+  background:#f7f3fb; color:#331b48;
+  padding:8px 14px; border-radius:999px;
+  font-weight:700; cursor:pointer;
+  box-shadow:0 2px 6px rgba(0,0,0,.05);
+}
+.venue-pill:hover{ background:#efe7f8; }
+.venue-pill.is-active{
+  background: var(--brand); color:#fff; border-color: var(--brand);
+}
+.staff-tip {
+  margin: 0 0 14px;
+  font-size: 14px;
+  font-style: italic;
+  color: #553c86;  /* or #555 if you want more neutral */
+}

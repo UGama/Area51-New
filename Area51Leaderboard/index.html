@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="apple-touch-icon" href="pic/icon-192.png">
+  <meta name="theme-color" content="#4e2a6c">
+  <link rel="stylesheet" href="styles.css">
+</head>  
+<body>
+  <header class="topbar">
+    <img class="logo" src="pic/logo.png" alt="Area51 logo">
+    <span class="brand">Area51 Super Climber Leaderboard</span>
+  </header>
+
+  <main class="page">
+
+    <!-- Venue switcher -->
+    <nav class="venue-switch" aria-label="Venue">
+      <button class="venue-pill is-active" data-venue="all">All</button>
+      <button class="venue-pill" data-venue="helensvale">Helensvale</button>
+      <button class="venue-pill" data-venue="redcliffe">Redcliffe</button>
+      <button class="venue-pill" data-venue="gardencity">Garden City</button>
+    </nav>
+
+    <p class="staff-tip">*Staff must read the rules at the bottom before using it.</p>
+
+
+    <div class="layout">
+      <!-- Left: Historical Leaderboard -->
+      <section class="card">
+        <h2>Historical Leaderboard</h2>
+        <table id="rank-table-hist">
+          <thead>
+            <tr>
+              <th>Rank</th><th>Name</th><th>Time</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <div class="actions">
+          <div class="actions-left">
+            <!-- <button id="hist-reset" class="btn btn--danger">Reset</button> -->
+          </div>
+        <div class="actions-right">
+          <button id="hist-edit"  class="btn">Edit</button>
+          <!-- <button id="hist-add"   class="btn">Add</button> -->
+        </div>
+      </div>
+
+
+      </section>
+
+      <!-- Right: Today's Leaderboard -->
+      <aside class="card">
+        <h2>Today's Leaderboard</h2>
+        <table id="rank-table-today">
+          <thead>
+            <tr>
+              <th>Rank</th><th>Name</th><th>Time</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <div class="actions">
+          <div class="actions-left">
+            <button id="today-merge" class="btn btn--left-sep">Merge</button>
+            <button id="today-reset" class="btn btn--danger">Reset</button>
+          </div>
+          <div class="actions-right">
+            <button id="today-edit"  class="btn">Edit</button>
+            <button id="today-add"   class="btn">Add</button>
+            <!-- Show Storage is hidden, so keep it commented out -->
+            <!-- <button id="dump-storage" class="btn">Show Storage</button> -->
+          </div>
+        </div>
+
+      </aside>
+    </div>
+  </main>
+
+  <!-- Add Row Modal -->
+<div id="add-modal" class="modal hidden" aria-hidden="true">
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="add-title">
+    <h3 id="add-title" class="modal__title">Add Leaderboard Row</h3>
+
+    <div class="modal__field">
+      <label for="add-name">Name</label>
+      <input id="add-name" type="text" placeholder="e.g., Aria" />
+    </div>
+
+    <!-- Time -->
+    <div class="modal__field">
+      <label for="add-score">Time</label>
+      <!-- readonly prevents the OS keyboard; inputmode hints desktop/ATs -->
+      <input id="add-score" type="text" inputmode="decimal" autocomplete="off"
+      placeholder="e.g., 5.35" readonly />
+    </div>
+
+
+    <div class="modal__actions">
+      <button id="add-cancel" class="btn">Cancel</button>
+      <button id="add-confirm" class="btn btn--primary">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Row Modal -->
+<div id="delete-modal" class="modal hidden" aria-hidden="true">
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="del-title">
+    <h3 id="del-title" class="modal__title">Confirm Delete</h3>
+
+    <p id="del-msg" style="margin: 0 0 12px 0;">Are you sure?</p>
+
+    <div class="modal__actions">
+      <button id="del-cancel" class="btn">Cancel</button>
+      <button id="del-confirm" class="btn btn--danger">Delete</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+  window.SUPABASE_URL = "https://rhgfzhmessbxoesqkixr.supabase.co";
+  window.SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJoZ2Z6aG1lc3NieG9lc3FraXhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEzNzIzNjYsImV4cCI6MjA3Njk0ODM2Nn0.auo5AOo3iV4j1pZIFYQSBfYUrKOIH8_mz0k4F56VkkY";
+</script>
+
+<script src="main.js" defer></script>
+<script>
+if ('serviceWorker' in navigator) {
+  const isLocal = ['localhost','127.0.0.1'].includes(location.hostname);
+  if (!isLocal) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./service-worker.js', { scope: './' });
+    });
+  } else {
+    navigator.serviceWorker.getRegistrations()
+      .then(rs => Promise.all(rs.map(r => r.unregister())))
+      .then(() => caches.keys())
+      .then(keys => Promise.all(keys.map(k => caches.delete(k))))
+      .then(() => {
+        if (!sessionStorage.getItem('reloadedAfterSWKill')) {
+          sessionStorage.setItem('reloadedAfterSWKill','1');
+          location.reload();
+        }
+      });
+  }
+}
+</script>
+
+
+<!-- Custom numeric keypad -->
+<div id="numpad" class="numpad hidden" aria-hidden="true">
+  <div class="numpad__panel" role="dialog" aria-modal="true" aria-label="Numeric keypad">
+    <div class="numpad__display">
+      <input id="numpad-display" type="text" readonly />
+    </div>
+    <div class="numpad__grid">
+      <!-- top row: 1 2 3 -->
+      <button data-k="1">1</button>
+      <button data-k="2">2</button>
+      <button data-k="3">3</button>
+
+      <!-- middle row: 4 5 6 (unchanged) -->
+      <button data-k="4">4</button>
+      <button data-k="5">5</button>
+      <button data-k="6">6</button>
+
+      <!-- bottom number row: 7 8 9 -->
+      <button data-k="7">7</button>
+      <button data-k="8">8</button>
+      <button data-k="9">9</button>
+
+      <!-- last row: . 0 del (unchanged) -->
+      <button data-k=".">.</button>
+      <button data-k="0">0</button>
+      <button data-k="del" class="numpad__del">⌫</button>
+    </div>
+
+    <div class="numpad__actions">
+      <button id="numpad-cancel" class="btn">Cancel</button>
+      <button id="numpad-ok" class="btn btn--primary">OK</button>
+    </div>
+  </div>
+</div>
+
+<section class="rules">
+  <h3 class="rules__title">Rules</h3>
+  <ol class="rules__list">
+    <li>Every player must press the start &amp; finish button for themselves.</li>
+    <li>Every player must go through every main block (except two small blocks) without falling.</li>
+    <li>Player can get a free slushee if he/she breaks into the top 10 in the historical leaderboard.</li>
+  </ol>
+</section>
+
+  <div id="copyright" class="copyright">
+    &copy; <span id="copyright-year"></span> Mian
+  </div>
+</body>
+</html>
