@@ -57,7 +57,14 @@
 
         const avatar = document.createElement("div");
         avatar.className = "avatar";
-        avatar.textContent = role === "bot" ? "AI" : "You";
+        if (role === "bot") {
+          const img = document.createElement("img");
+          img.src = "pic/logo.png";
+          img.alt = "Area51 AI logo";
+          avatar.appendChild(img);
+        } else {
+          avatar.textContent = "You";
+        }
 
         const bubble = opts.typing ? createTypingBubble() : document.createElement("div");
         if (!opts.typing) bubble.className = "bubble";
