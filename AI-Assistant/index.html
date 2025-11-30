@@ -1,0 +1,120 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Area51 AI Assistant</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <img class="logo" src="pic/logo.png" alt="Area51 logo">
+      <span class="brand">Area51 AI Assistant</span>
+    </header>
+
+    <main class="page">
+      <section class="chat-shell">
+        <div id="chat" class="chat-window"></div>
+
+        <form id="form" class="chat-form">
+          <label class="visually-hidden" for="input">Your message</label>
+          <div class="input-row">
+            <input id="input" autocomplete="off" placeholder="Ask Area51 anything..." />
+            <button id="send-btn" type="submit">Send</button>
+          </div>
+        </form>
+      </section>
+    </main>
+
+    <script>
+      const chat = document.getElementById("chat");
+      const form = document.getElementById("form");
+      const input = document.getElementById("input");
+      let thinkingMessage = null;
+
+      function typeText(target, text) {
+        target.textContent = "";
+        let i = 0;
+        function step() {
+          target.textContent = text.slice(0, i);
+          i += 1;
+          if (i <= text.length) {
+            setTimeout(step, 12);
+          }
+        }
+        step();
+      }
+
+      function createTypingBubble() {
+        const bubble = document.createElement("div");
+        bubble.className = "bubble bubble-typing";
+        bubble.innerHTML = '<span class="dot"></span><span class="dot"></span><span class="dot"></span>';
+        return bubble;
+      }
+
+      function createMessage(text, role, opts = {}) {
+        const row = document.createElement("div");
+        row.className = `message ${role}`;
+
+        const avatar = document.createElement("div");
+        avatar.className = "avatar";
+        avatar.textContent = role === "bot" ? "AI" : "You";
+
+        const bubble = opts.typing ? createTypingBubble() : document.createElement("div");
+        if (!opts.typing) bubble.className = "bubble";
+
+        if (opts.typing) {
+        } else if (opts.animate) {
+          typeText(bubble, text);
+        } else {
+          bubble.textContent = text;
+        }
+
+        row.appendChild(avatar);
+        row.appendChild(bubble);
+        chat.appendChild(row);
+        chat.scrollTop = chat.scrollHeight;
+        return { row, bubble };
+      }
+
+      function showThinking() {
+        thinkingMessage = createMessage("...", "bot", { typing: true });
+      }
+
+      function clearThinking() {
+        if (thinkingMessage) {
+          thinkingMessage.row.remove();
+          thinkingMessage = null;
+        }
+      }
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const text = input.value.trim();
+        if (!text) return;
+
+        createMessage(text, "user");
+        input.value = "";
+        showThinking();
+
+        try {
+          const res = await fetch("/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message: text }),
+          });
+          const data = await res.json();
+          clearThinking();
+          createMessage(data.reply, "bot", { animate: true });
+        } catch (err) {
+          clearThinking();
+          createMessage("Error talking to the server.", "bot");
+          console.error(err);
+        }
+      });
+
+      // Initial greeting
+      createMessage("Hi, I'm Area51 AI robot, how can I help you?", "bot", { animate: true });
+    </script>
+    <div class="copyright">© Mian</div>
+  </body>
+</html>
