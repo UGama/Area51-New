@@ -136,11 +136,11 @@ async function saveBoard(board, rows, opts = {}) {
 
   const key = boardKey(board, currentVenue);
 
-  // Fetch currently-active rows on server
+  // Fetch currently-active rows on server (both this board's records AND 'both' records)
   const { data: activeNow, error: loadErr } = await supabase
     .from('leaderboard')
     .select('id, name, score, venue, board, status')
-    .eq('board', key)
+    .in('board', [key, 'both'])
     .eq('venue', currentVenue)
     .eq('status', 1)
     .limit(500);
@@ -151,6 +151,13 @@ async function saveBoard(board, rows, opts = {}) {
   }
 
   const activeIds = new Set((activeNow || []).map(r => r.id).filter(Number.isInteger));
+  // Create a map of ID -> original board value to preserve 'both'
+  const originalBoardMap = {};
+  (activeNow || []).forEach(r => {
+    if (Number.isInteger(r.id)) {
+      originalBoardMap[r.id] = r.board;
+    }
+  });
 
   // Normalize incoming rows
   const cleaned = (rows || []).map(r => ({
@@ -160,7 +167,11 @@ async function saveBoard(board, rows, opts = {}) {
   })).filter(r => r.name !== "");
 
   // 1) Upsert all provided rows as status=1
-  const upserts = cleaned.map(r => toDBPayload(key, currentVenue, r, 1));
+  const upserts = cleaned.map(r => {
+    // Preserve 'both' board attribute, otherwise use the current board key
+    const finalBoard = originalBoardMap[r.id] === 'both' ? 'both' : key;
+    return toDBPayload(finalBoard, currentVenue, r, 1);
+  });
   if (upserts.length) {
     const { error: upErr } = await supabase.from('leaderboard').upsert(upserts, { onConflict: 'id' });
     if (upErr) { console.warn('[remote] upsert error', upErr); return false; }
