@@ -41,7 +41,7 @@ body { background: #f6f4fb; color: #1f1630; }
   box-shadow: 0 2px 6px rgba(0,0,0,.15);
 }
 .topbar .logo {
-  height: calc(var(--topbar-h) - 24px); /* fits within topbar after padding */
+  height: calc(var(--topbar-h)); /* fits within topbar after padding */
   width: auto;
   object-fit: contain;
   display: block;

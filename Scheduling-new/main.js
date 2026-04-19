@@ -24,7 +24,6 @@ const ruleDaySel = document.getElementById("rule-day");
 const rulesListEl = document.getElementById("rules-list");
 const rosterGrid = document.getElementById("roster-grid");
 const copyrightYear = document.getElementById("copyright-year");
-const generateBtn = document.getElementById("generate-btn");
 const rosterGenerateBtn = document.getElementById("roster-generate-btn");
 
 let employees = [];
@@ -54,8 +53,7 @@ const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Sat
 let rules = [];
 const inputsForValidation = [ruleNameInput, ruleRequireSel, ruleStartSel, ruleEndSel, ruleDaySel];
 
-fetchEmployees();
-renderRosterGrid();
+
 
 async function fetchEmployees() {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY || SUPABASE_URL.includes("your-project-ref")) {
@@ -198,3 +196,134 @@ function renderRosterGrid(assignmentsMap) {
     }
   });
 }
+
+function renderDetail(row) {
+  if (!row) {
+    detailName.textContent = "—";
+    detailVenue.textContent = "—";
+    detailPosition.textContent = "—";
+    detailType.textContent = "—";
+    currentDetail = null;
+    return;
+  }
+  detailName.textContent = row.name || "Unnamed";
+  detailVenue.textContent = row.venue || "—";
+  detailPosition.textContent = row.position || "—";
+  detailType.textContent = row.type || "—";
+  currentDetail = row;
+}
+
+function renderRules() {
+  if (!rulesListEl) return;
+  rulesListEl.innerHTML = "";
+  if (!rules.length) {
+    const div = document.createElement("div");
+    div.className = "empty";
+    div.textContent = "No rules yet.";
+    rulesListEl.appendChild(div);
+    return;
+  }
+  rules.forEach((rule, idx) => {
+    const div = document.createElement("div");
+    div.className = "rule-line";
+    div.innerHTML = `${idx + 1}. ${rule.name} <strong>${rule.require}</strong> be scheduled from ${rule.start} to ${rule.end} on ${rule.day}`;
+    rulesListEl.appendChild(div);
+  });
+}
+
+const wireGenerate = (btn) => {
+  if (btn) {
+    btn.addEventListener("click", () => {
+      const result = generateRoster();
+      if (!result) return;
+      const { assignments, errors } = result;
+      if (errors.length) {
+        alert(errors.join("\n"));
+      }
+      renderRosterGrid(assignments);
+    });
+  }
+};
+
+function generateRoster() {
+  if (!employees.length) {
+    alert("No employees loaded.");
+    return null;
+  }
+  const counts = new Map();
+  employees.forEach((e) => counts.set(e.id ?? e.name, 0));
+
+  const assignments = {};
+  const errors = [];
+
+  const requirements = (day) => {
+    const weekend = day === "Saturday" || day === "Sunday";
+    const set = weekend ? 2 : 1;
+    return [
+      ...Array(set).fill({ position: "floor" }),
+      ...Array(set).fill({ position: "cafe" }),
+      ...Array(set).fill({ position: "reception" }),
+    ];
+  };
+
+  const pickCandidate = (position, day, shift) => {
+    let candidates = employees
+      .map((emp) => {
+        const eff = ruleEffectFor(emp.name, day, shift);
+        return {
+          emp,
+          blocked: eff.blocked,
+          must: eff.must,
+          hasPos: hasPosition(emp, position),
+        };
+      })
+      .filter((c) => !c.blocked);
+
+    candidates = candidates.filter((c) => c.hasPos);
+    // fallback to any non-blocked if none match
+    if (!candidates.length) {
+      candidates = employees
+        .map((emp) => {
+          const eff = ruleEffectFor(emp.name, day, shift);
+          return { emp, blocked: eff.blocked, must: eff.must, hasPos: true };
+        })
+        .filter((c) => !c.blocked);
+    }
+    if (!candidates.length) {
+      errors.push(`No available ${position} on ${day} (${shift.name}).`);
+      return null;
+    }
+    candidates.sort((a, b) => {
+      if (a.must !== b.must) return a.must ? -1 : 1;
+      const ca = counts.get(a.emp.id ?? a.emp.name) || 0;
+      const cb = counts.get(b.emp.id ?? b.emp.name) || 0;
+      if (ca !== cb) return ca - cb;
+      return Math.random() - 0.5;
+    });
+    const chosen = candidates[0].emp;
+    const key = chosen.id ?? chosen.name;
+    counts.set(key, (counts.get(key) || 0) + 1);
+    return chosen;
+  };
+
+  shifts.forEach((shift) => {
+    daysOfWeek.forEach((day) => {
+      const reqs = requirements(day);
+      const key = `${day}-${shift.name}`;
+      assignments[key] = [];
+      reqs.forEach((req) => {
+        const pick = pickCandidate(req.position, day, shift);
+        assignments[key].push({
+          position: req.position,
+          name: pick ? pick.name || "Unnamed" : "Unfilled",
+        });
+      });
+    });
+  });
+
+  return { assignments, errors };
+}
+
+fetchEmployees();
+renderRosterGrid();
+wireGenerate(rosterGenerateBtn);

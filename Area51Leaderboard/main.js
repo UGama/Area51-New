@@ -120,6 +120,25 @@ async function loadBoard(board) {
   }
 }
 
+/** Load the single Best Girl record (board="girl") */
+async function loadGirlRecord() {
+  const ACTIVE = 1;
+  const { data, error } = await supabase
+    .from("leaderboard")
+    .select("id, board, venue, name, score, status")
+    .eq("board", "girl")
+    .eq("status", ACTIVE)
+    .order("score", { ascending: true })
+    .limit(1);
+
+  if (error) {
+    console.warn("[remote] load girl error", error);
+    return [];
+  }
+
+  return rowsFromDB(data || []).slice(0, 1);
+}
+
 
 /**
  * Save the current board by:
@@ -198,11 +217,16 @@ async function saveBoard(board, rows, opts = {}) {
 // ===== Live data (now from SERVER) =====
 const histData = [];
 const todayData = [];
+const girlData = [];
 
 // Ensure ids stay unique across both arrays (you already have helpers that rely on this)
 function hydrate(board, rows) {
   const target = board === 'hist' ? histData : todayData;
   target.splice(0, target.length, ...rows);
+}
+
+function hydrateGirl(rows) {
+  girlData.splice(0, girlData.length, ...(rows || []).slice(0, 1));
 }
 
 /** One-time bootstrap */
@@ -268,6 +292,32 @@ function renderLeaderboard(rows, tableSelector) {
   refreshEmptyState?.();
 }
 
+function renderGirlRecord(rows) {
+  const table = document.getElementById("rank-table-girl");
+  const tbody = table?.querySelector("tbody");
+  if (!tbody) return;
+
+  const top = [...(rows || [])]
+    .sort((a, b) => Number(a.score || 0) - Number(b.score || 0))
+    .slice(0, 1);
+
+  tbody.innerHTML = top
+    .map((row) => {
+      const time = Number(row.score) || 0;
+      const name = (row.name ?? "").toString();
+      const id = Number.isInteger(row.id) ? row.id : "";
+      return `<tr data-id="${id}">
+        <td>1</td>
+        <td>${name}</td>
+        <td>${time.toFixed(2)}</td>
+      </tr>`;
+    })
+    .join("");
+
+  showEmptyStateIfNeeded(table, "There are no records yet.");
+  refreshEmptyState?.();
+}
+
 
 
 // Convert current table → array (used when finishing Edit)
@@ -317,7 +367,12 @@ async function toggleEditable(tableSelector, btnEl, which) {
     // Only save if changed (still use normalized compare)
     if (!isSameData(before, edited)) {
       try {
-        if (which === "hist") {
+        if (which === "girl") {
+          await applyGirlEdits(edited);
+          const girlRows = await loadGirlRecord();
+          hydrateGirl(girlRows);
+          renderGirlRecord(girlData);
+        } else if (which === "hist") {
           // 🔧 NEW: Historical has special logic based on board value
           const { changedBoth } = await applyHistoricalEdits(edited);
 
@@ -353,6 +408,7 @@ async function toggleEditable(tableSelector, btnEl, which) {
 
     showEmptyStateIfNeeded(document.getElementById("rank-table-hist"));
     showEmptyStateIfNeeded(document.getElementById("rank-table-today"));
+    showEmptyStateIfNeeded(document.getElementById("rank-table-girl"));
     refreshEmptyState();
 
     // Cleanup listeners/flags + tip
@@ -400,7 +456,7 @@ async function toggleEditable(tableSelector, btnEl, which) {
     card.classList.add("editing");
 
     // ❌ No delete column for Historical edit
-    if (which === "hist") {
+    if (which === "hist" || which === "girl") {
       document.querySelector(tableSelector).dataset.wantDeleteCol = "0";
       disableDeleteUI(tableSelector);
     } else {
@@ -710,7 +766,7 @@ function applyTop3MedalsToTable(table) {
 
 // Apply to whichever tables you have
 function applyMedals() {
-  const tables = document.querySelectorAll('#rank-table, #rank-table-today, #rank-table-hist');
+  const tables = document.querySelectorAll('#rank-table, #rank-table-today, #rank-table-hist, #rank-table-girl');
   tables.forEach(applyTop3MedalsToTable);
 }
 
@@ -775,6 +831,7 @@ function closeConfirmModal() {
   let fallback =
     _delContext?.opener ||
     document.querySelector(".card.editing .btn.is-editing") ||
+    document.getElementById("girl-edit") ||
     document.getElementById("today-edit") ||
     document.getElementById("hist-edit") ||
     document.body;
@@ -1198,9 +1255,14 @@ function applyVenueButtonState(){
 }
 
 async function refreshFromServer(){
-  const [histRows, todayRows] = await Promise.all([loadBoard('hist'), loadBoard('today')]);
+  const [histRows, todayRows, girlRows] = await Promise.all([
+    loadBoard('hist'),
+    loadBoard('today'),
+    loadGirlRecord()
+  ]);
   hydrate('hist', histRows);
   hydrate('today', todayRows);
+  hydrateGirl(girlRows);
 
   // ensure ids locally so edit/delete helpers work
   const changed = ensureAllHaveIds();
@@ -1211,6 +1273,7 @@ async function refreshFromServer(){
 
   renderLeaderboard(histData, "#rank-table-hist");
   renderLeaderboard(todayData, "#rank-table-today");
+  renderGirlRecord(girlData);
   applyVenueButtonState();
   refreshEmptyState?.();
 }
@@ -1230,6 +1293,32 @@ function renderHeaders(tableSelector) {
   const cols = isAll ? ["Rank", "Name", "Venue", "Time"] : ["Rank", "Name", "Time"];
 
   theadRow.innerHTML = cols.map((t) => `<th>${t}</th>`).join("");
+}
+
+async function applyGirlEdits(editedRows) {
+  const current = girlData.find(r => Number.isInteger(r.id));
+  if (!current) return;
+
+  const edited = normalizeRows(editedRows)[0];
+  if (!edited) return;
+
+  const origName = (current.name || "").trim();
+  const origScore = Math.round((Number(current.score) || 0) * 100) / 100;
+  const nextName = (edited.name || "").trim();
+  const nextScore = Math.round((Number(edited.score) || 0) * 100) / 100;
+
+  if (!nextName) return;
+  if (origName === nextName && origScore === nextScore) return;
+
+  const { error } = await supabase
+    .from("leaderboard")
+    .update({ name: nextName, score: nextScore })
+    .eq("id", current.id);
+
+  if (error) {
+    console.warn("[girl edit] update error", error);
+    throw error;
+  }
 }
 
 /**
@@ -1360,6 +1449,9 @@ document.getElementById("add-score")?.addEventListener("keydown", (e) => e.preve
 // ===== Wire buttons (ids from your HTML) =====
 document.getElementById("hist-edit")?.addEventListener("click", (e) => {
   toggleEditable("#rank-table-hist", e.currentTarget, "hist");
+});
+document.getElementById("girl-edit")?.addEventListener("click", (e) => {
+  toggleEditable("#rank-table-girl", e.currentTarget, "girl");
 });
 // Historical Reset -> modal confirm
 document.getElementById("hist-reset")?.addEventListener("click", (e) => {
@@ -1858,23 +1950,27 @@ function refreshEmptyState() {
   // Use your real table IDs
   const histTable  = document.getElementById("rank-table-hist");
   const todayTable = document.getElementById("rank-table-today");
+  const girlTable  = document.getElementById("rank-table-girl");
 
   const histTbody  = histTable?.querySelector("tbody");
   const todayTbody = todayTable?.querySelector("tbody");
+  const girlTbody  = girlTable?.querySelector("tbody");
 
   // Toggle inline “There are no records yet” <tr>
   showEmptyStateIfNeeded(histTable,  "There are no records yet.");
   showEmptyStateIfNeeded(todayTable, "There are no records yet.");
+  showEmptyStateIfNeeded(girlTable,  "There are no records yet.");
 
   const histCount  = countRows(histTbody);
   const todayCount = countRows(todayTbody);
+  const girlCount = countRows(girlTbody);
 
   // If a table is empty, strip the Delete column entirely (even in edit mode)
   if (histCount === 0)  disableDeleteUI("#rank-table-hist");
   if (todayCount === 0) disableDeleteUI("#rank-table-today");
 
   // Disable any delete buttons when there are no rows in either table
-  const anyRows = (histCount + todayCount) > 0;
+  const anyRows = (histCount + todayCount + girlCount) > 0;
   document.querySelectorAll('[data-action="delete"], .btn-delete-row, .row-del').forEach(btn => {
     btn.disabled = !anyRows;
     btn.setAttribute("aria-disabled", !anyRows ? "true" : "false");
@@ -1887,10 +1983,12 @@ function refreshEmptyState() {
 function setupEmptyStateObservers() {
   const histTbody  = document.querySelector("#rank-table-hist tbody");
   const todayTbody = document.querySelector("#rank-table-today tbody");
+  const girlTbody  = document.querySelector("#rank-table-girl tbody");
 
   const obs = new MutationObserver(() => refreshEmptyState());
   if (histTbody)  obs.observe(histTbody,  { childList: true, subtree: false });
   if (todayTbody) obs.observe(todayTbody, { childList: true, subtree: false });
+  if (girlTbody)  obs.observe(girlTbody,  { childList: true, subtree: false });
 }
 
 document.getElementById("add-score")

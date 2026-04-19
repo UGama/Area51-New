@@ -58,6 +58,11 @@ html, body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto,
   display: grid;
   grid-template-columns: 1fr 1fr; /* historical wider, today's narrower */
   gap: 16px;
+  align-items: start; /* prevent cards from stretching to equal height */
+}
+.layout-left {
+  display: grid;
+  gap: 16px;
 }
 @media (max-width: 900px) {
   .layout { grid-template-columns: 1fr; }
@@ -246,6 +251,10 @@ th.del-col, td.del-col { text-align: center; width: 40px; }
 .card table {
   margin-top: 20px;
   margin-bottom: 20px; /* optional */
+}
+
+.actions--single {
+  justify-content: flex-end;
 }
 
 /* ===== Custom numeric keypad ===== */
