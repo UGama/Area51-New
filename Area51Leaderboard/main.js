@@ -122,11 +122,14 @@ async function loadBoard(board) {
 
 /** Load the single Best Girl record (board="girl") */
 async function loadGirlRecord() {
+  if (currentVenue === "all") return [];
+
   const ACTIVE = 1;
   const { data, error } = await supabase
     .from("leaderboard")
     .select("id, board, venue, name, score, status")
     .eq("board", "girl")
+    .eq("venue", currentVenue)
     .eq("status", ACTIVE)
     .order("score", { ascending: true })
     .limit(1);
@@ -137,6 +140,12 @@ async function loadGirlRecord() {
   }
 
   return rowsFromDB(data || []).slice(0, 1);
+}
+
+function applyGirlCardVisibility() {
+  const girlCard = document.getElementById("girl-card");
+  if (!girlCard) return;
+  girlCard.hidden = currentVenue === "all";
 }
 
 
@@ -314,6 +323,7 @@ function renderGirlRecord(rows) {
     })
     .join("");
 
+  applyMedals();
   showEmptyStateIfNeeded(table, "There are no records yet.");
   refreshEmptyState?.();
 }
@@ -1247,11 +1257,14 @@ function applyVenueButtonState(){
   const isAll = currentVenue === "all";
   [
     "#hist-edit","#hist-add","#hist-reset",
-    "#today-edit","#today-add","#today-reset","#today-merge"
+    "#today-edit","#today-add","#today-reset","#today-merge",
+    "#girl-edit"
   ].forEach(sel=>{
     const btn = document.querySelector(sel);
     if (btn) btn.disabled = isAll;
   });
+
+  applyGirlCardVisibility();
 }
 
 async function refreshFromServer(){
