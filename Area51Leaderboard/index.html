@@ -23,52 +23,40 @@
       <button class="venue-pill" data-venue="gardencity">Garden City</button>
     </nav>
 
-    <p class="staff-tip">*Staff must read the rules at the bottom before using it.</p>
+    <div class="info-row">
+      <p class="staff-tip">*Staff must read the rules at the bottom before using it.</p>
+      <div class="today-filter">
+        <label for="today-date-picker">Date</label>
+        <input id="today-date-picker" type="date" />
+      </div>
+    </div>
 
 
     <div class="layout">
-      <div class="layout-left">
-        <!-- Left Top: Historical Leaderboard -->
-        <section class="card">
-          <h2>Historical Leaderboard</h2>
-          <table id="rank-table-hist">
-            <thead>
-              <tr>
-                <th>Rank</th><th>Name</th><th>Time</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-          <div class="actions">
-            <div class="actions-left">
-              <!-- <button id="hist-reset" class="btn btn--danger">Reset</button> -->
-            </div>
-          <div class="actions-right">
-            <button id="hist-edit"  class="btn">Edit</button>
-            <!-- <button id="hist-add"   class="btn">Add</button> -->
+      <!-- Left Top: Historical Leaderboard -->
+      <section class="card card-hist">
+        <h2>Historical Leaderboard</h2>
+        <table id="rank-table-hist">
+          <thead>
+            <tr>
+              <th>Rank</th><th>Name</th><th>Time</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <div class="actions">
+          <div class="actions-left">
+            <!-- <button id="hist-reset" class="btn btn--danger">Reset</button> -->
           </div>
+        <div class="actions-right">
+          <button id="hist-edit"  class="btn">Edit</button>
+          <!-- <button id="hist-add"   class="btn">Add</button> -->
         </div>
-        </section>
-
-        <!-- Left Bottom: Best Girl Record -->
-        <section id="girl-card" class="card">
-          <h2>Best Girl Record</h2>
-          <table id="rank-table-girl">
-            <thead>
-              <tr>
-                <th>Rank</th><th>Name</th><th>Time</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-          <div class="actions actions--single">
-            <button id="girl-edit" class="btn">Edit</button>
-          </div>
-        </section>
       </div>
+      </section>
 
       <!-- Right: Today's Leaderboard -->
-      <aside class="card">
+      <aside class="card card-today">
         <h2>Today's Leaderboard</h2>
         <table id="rank-table-today">
           <thead>
@@ -92,6 +80,22 @@
         </div>
 
       </aside>
+
+      <!-- Left Bottom: Best Girl Record -->
+      <section id="girl-card" class="card">
+        <h2>Best Girl Record</h2>
+        <table id="rank-table-girl">
+          <thead>
+            <tr>
+              <th>Rank</th><th>Name</th><th>Time</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <div class="actions actions--single">
+          <button id="girl-edit" class="btn">Edit</button>
+        </div>
+      </section>
     </div>
   </main>
 

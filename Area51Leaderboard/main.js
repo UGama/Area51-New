@@ -29,6 +29,7 @@ document.getElementById("copyright-year").textContent = new Date().getFullYear()
 const supabase = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON);
 
 let GLOBAL_NEXT_ID = 0;
+let selectedTodayDateKey = todayBrisbaneKey();
 
 /** Convert DB rows -> [{id,name,score}] */
 function rowsFromDB(dbRows) {
@@ -39,9 +40,33 @@ function rowsFromDB(dbRows) {
       score: Number(r.score) || 0,
       venue: r.venue,
       board: r.board,
-      status: r.status
+      status: r.status,
+      updated_at: r.updated_at || null,
+      created_at: r.created_at || null
     }))
     .filter(r => r.name !== "");
+}
+
+function timeValue(iso) {
+  if (!iso) return Number.MAX_SAFE_INTEGER;
+  const t = Date.parse(iso);
+  return Number.isFinite(t) ? t : Number.MAX_SAFE_INTEGER;
+}
+
+/**
+ * Leaderboard ranking:
+ * 1) lower score first
+ * 2) if same score, earlier updated_at first (who got it first ranks first)
+ * 3) stable fallback by id
+ */
+function compareLeaderboardRows(a, b) {
+  const scoreDiff = Number(a.score || 0) - Number(b.score || 0);
+  if (scoreDiff !== 0) return scoreDiff;
+
+  const updatedDiff = timeValue(a.updated_at) - timeValue(b.updated_at);
+  if (updatedDiff !== 0) return updatedDiff;
+
+  return Number(a.id || 0) - Number(b.id || 0);
 }
 
 
@@ -68,34 +93,52 @@ async function loadBoard(board) {
     //  - Today page:      board IN ['today', 'both']
     const boardsToInclude = board === "hist"
       ? ["hist", "both"]
-      : ["today", "both"];
+      : ["today", "both", "hist"];
 
-    const { data, error } = await supabase
+    let query = supabase
       .from("leaderboard")
-      .select("id, board, venue, name, score, status")
+      .select("id, board, venue, name, score, status, created_at, updated_at")
       .in("board", boardsToInclude)
-      .eq("venue", currentVenue)
-      .eq("status", ACTIVE)
+      .eq("venue", currentVenue);
+
+    // Keep Historical clean (active rows only). Today date view can include all statuses.
+    if (board === "hist") {
+      query = query.eq("status", ACTIVE);
+    }
+
+    const { data, error } = await query
       .order("score", { ascending: true })
-      .limit(200);
+      .limit(600);
 
     if (error) {
       console.warn("[remote] load error", error);
       return [];
     }
-    return rowsFromDB(data || []);
+    let rows = data || [];
+    if (board === "today") {
+      const dateKey = selectedTodayDateKey || todayBrisbaneKey();
+      rows = rows.filter(r => brisbaneDayKeyFromIso(r.created_at) === dateKey);
+    }
+
+    const parsed = rowsFromDB(rows).sort(compareLeaderboardRows);
+    return board === "today" ? parsed.slice(0, 10) : parsed;
   } else {
     // ALL view = merge all venues
     const boardsToInclude = board === "hist"
       ? ["hist", "both"]
-      : ["today", "both"];
+      : ["today", "both", "hist"];
 
-    const { data, error } = await supabase
+    let query = supabase
       .from("leaderboard")
-      .select("id, board, venue, name, score, status, updated_at")
+      .select("id, board, venue, name, score, status, created_at, updated_at")
       .in("board", boardsToInclude)
-      .in("venue", VENUES)
-      .eq("status", ACTIVE)
+      .in("venue", VENUES);
+
+    if (board === "hist") {
+      query = query.eq("status", ACTIVE);
+    }
+
+    const { data, error } = await query
       .order("score", { ascending: true })
       .limit(600);
 
@@ -106,15 +149,13 @@ async function loadBoard(board) {
 
     let rows = data || [];
 
-    // For ALL → Today's leaderboard: only keep rows updated "today" in Brisbane
+    // For ALL → Today's leaderboard: keep rows created on selected date in Brisbane
     if (board !== "hist") {
-      const todayKey = todayBrisbaneKey();
-      rows = rows.filter(r => brisbaneDayKeyFromIso(r.updated_at) === todayKey);
+      const dateKey = selectedTodayDateKey || todayBrisbaneKey();
+      rows = rows.filter(r => brisbaneDayKeyFromIso(r.created_at) === dateKey);
     }
 
-    const merged = rowsFromDB(rows).sort(
-      (a, b) => Number(a.score || 0) - Number(b.score || 0)
-    );
+    const merged = rowsFromDB(rows).sort(compareLeaderboardRows);
 
     return merged.slice(0, 10);
   }
@@ -261,7 +302,7 @@ function renderLeaderboard(rows, tableSelector) {
   if (!tbody) return;
 
   // ASC: lower time is better
-  const sorted = [...rows].sort((a, b) => Number(a.score || 0) - Number(b.score || 0));
+  const sorted = [...rows].sort(compareLeaderboardRows);
   const showVenue = currentVenue === "all";
 
   tbody.innerHTML = sorted
@@ -1249,7 +1290,15 @@ function setVenue(venue){
     b.classList.toggle("is-active", b.dataset.venue === venue);
   });
   // reload tables for the new scope
+  syncTodayDatePicker();
   refreshFromServer();
+}
+
+function syncTodayDatePicker() {
+  const picker = document.getElementById("today-date-picker");
+  if (!picker) return;
+  const value = selectedTodayDateKey || todayBrisbaneKey();
+  picker.value = value;
 }
 
 // Disable Edit/Add/Reset in ALL view (read-only merged view)
@@ -1268,6 +1317,7 @@ function applyVenueButtonState(){
 }
 
 async function refreshFromServer(){
+  syncTodayDatePicker();
   const [histRows, todayRows, girlRows] = await Promise.all([
     loadBoard('hist'),
     loadBoard('today'),
@@ -1288,6 +1338,14 @@ async function refreshFromServer(){
   renderLeaderboard(todayData, "#rank-table-today");
   renderGirlRecord(girlData);
   applyVenueButtonState();
+  refreshEmptyState?.();
+}
+
+async function refreshTodayFromServer() {
+  syncTodayDatePicker();
+  const todayRows = await loadBoard("today");
+  hydrate("today", todayRows);
+  renderLeaderboard(todayData, "#rank-table-today");
   refreshEmptyState?.();
 }
 
@@ -1486,6 +1544,12 @@ document.getElementById("today-edit")?.addEventListener("click", (e) => {
 
 document.getElementById("today-add")?.addEventListener("click", (e) => {
   openAddModal("today", e.currentTarget);
+});
+document.getElementById("today-date-picker")?.addEventListener("change", (e) => {
+  const picked = e.target?.value;
+  if (!picked) return;
+  selectedTodayDateKey = picked;
+  refreshTodayFromServer();
 });
 document.getElementById("hist-add")?.addEventListener("click", (e) => {
   openAddModal("hist", e.currentTarget);

@@ -57,15 +57,35 @@ html, body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto,
 .layout {
   display: grid;
   grid-template-columns: 1fr 1fr; /* historical wider, today's narrower */
+  grid-template-areas:
+    "hist today"
+    "girl .";
   gap: 16px;
-  align-items: start; /* prevent cards from stretching to equal height */
-}
-.layout-left {
-  display: grid;
-  gap: 16px;
+  align-items: stretch;
 }
 @media (max-width: 900px) {
-  .layout { grid-template-columns: 1fr; }
+  .layout {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "hist"
+      "today"
+      "girl";
+    align-items: start;
+  }
+}
+
+.info-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 14px;
+}
+@media (max-width: 900px) {
+  .info-row {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
 }
 
 .card {
@@ -80,6 +100,33 @@ html, body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto,
   font-size: 20px;
   text-align: center;
 }
+
+.today-filter {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.today-filter label {
+  font-size: 14px;
+  color: #4a3d5e;
+  font-weight: 600;
+}
+
+.today-filter input[type="date"] {
+  border: 1px solid #d6cbe3;
+  background: #f7f3fb;
+  color: #331b48;
+  border-radius: 10px;
+  padding: 6px 10px;
+  font-weight: 600;
+}
+
+.card-hist { grid-area: hist; }
+.card-today { grid-area: today; }
+#girl-card { grid-area: girl; }
 
 /* Table polish (shared) */
 table {
@@ -529,7 +576,7 @@ td.has-medal[data-medal="bronze"]::after { content: "🥉"; }
   background: var(--brand); color:#fff; border-color: var(--brand);
 }
 .staff-tip {
-  margin: 0 0 14px;
+  margin: 0;
   font-size: 14px;
   font-style: italic;
   color: #553c86;  /* or #555 if you want more neutral */
