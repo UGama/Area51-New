@@ -56,30 +56,36 @@
       </section>
 
       <!-- Right: Today's Leaderboard -->
-      <aside class="card card-today">
-        <h2>Today's Leaderboard</h2>
-        <table id="rank-table-today">
-          <thead>
-            <tr>
-              <th>Rank</th><th>Name</th><th>Time</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-        <div class="actions">
-          <div class="actions-left">
-            <button id="today-merge" class="btn btn--left-sep">Merge</button>
-            <button id="today-reset" class="btn btn--danger">Reset</button>
+      <div class="today-stack">
+        <aside class="card card-today">
+          <h2>Today's Leaderboard</h2>
+          <table id="rank-table-today">
+            <thead>
+              <tr>
+                <th>Rank</th><th>Name</th><th>Time</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+          <div class="actions">
+            <div class="actions-left">
+              <button id="today-merge" class="btn btn--left-sep">Merge</button>
+              <button id="today-reset" class="btn btn--danger">Reset</button>
+            </div>
+            <div class="actions-right">
+              <button id="today-edit"  class="btn">Edit</button>
+              <button id="today-add"   class="btn">Add</button>
+              <!-- Show Storage is hidden, so keep it commented out -->
+              <!-- <button id="dump-storage" class="btn">Show Storage</button> -->
+            </div>
           </div>
-          <div class="actions-right">
-            <button id="today-edit"  class="btn">Edit</button>
-            <button id="today-add"   class="btn">Add</button>
-            <!-- Show Storage is hidden, so keep it commented out -->
-            <!-- <button id="dump-storage" class="btn">Show Storage</button> -->
-          </div>
-        </div>
+        </aside>
 
-      </aside>
+        <div class="today-social today-social--outside" aria-label="TikTok handle">
+          <img class="today-social__icon" src="pic/tiktok.png" alt="TikTok icon" />
+          <span class="today-social__handle">@area51helensvale</span>
+        </div>
+      </div>
 
       <!-- Left Bottom: Best Girl Record -->
       <section id="girl-card" class="card">

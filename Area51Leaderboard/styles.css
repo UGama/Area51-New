@@ -125,7 +125,13 @@ html, body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto,
 }
 
 .card-hist { grid-area: hist; }
-.card-today { grid-area: today; }
+.today-stack {
+  grid-area: today;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.card-today { margin: 0; }
 #girl-card { grid-area: girl; }
 
 /* Table polish (shared) */
@@ -302,6 +308,27 @@ th.del-col, td.del-col { text-align: center; width: 40px; }
 
 .actions--single {
   justify-content: flex-end;
+}
+
+.today-social {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  color: #1a1a1a;
+}
+
+.today-social__icon {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  display: block;
+}
+
+.today-social__handle {
+  font-size: 14px;
+  font-weight: 700;
 }
 
 /* ===== Custom numeric keypad ===== */
