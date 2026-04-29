@@ -89,11 +89,11 @@ async function loadBoard(board) {
 
   if (currentVenue !== "all") {
     // For a single venue:
-    //  - Historical page: board IN ['hist', 'both']
-    //  - Today page:      board IN ['today', 'both']
+    //  - Historical page: board = 'both' (top 10 only)
+    //  - Today page:      board IN ['today', 'both'] (selected date, active only, top 10)
     const boardsToInclude = board === "hist"
-      ? ["hist", "both"]
-      : ["today", "both", "hist"];
+      ? ["both"]
+      : ["today", "both"];
 
     let query = supabase
       .from("leaderboard")
@@ -101,10 +101,8 @@ async function loadBoard(board) {
       .in("board", boardsToInclude)
       .eq("venue", currentVenue);
 
-    // Keep Historical clean (active rows only). Today date view can include all statuses.
-    if (board === "hist") {
-      query = query.eq("status", ACTIVE);
-    }
+    // Keep both boards clean (active rows only).
+    query = query.eq("status", ACTIVE);
 
     const { data, error } = await query
       .order("score", { ascending: true })
@@ -121,12 +119,12 @@ async function loadBoard(board) {
     }
 
     const parsed = rowsFromDB(rows).sort(compareLeaderboardRows);
-    return board === "today" ? parsed.slice(0, 10) : parsed;
+    return parsed.slice(0, 10);
   } else {
     // ALL view = merge all venues
     const boardsToInclude = board === "hist"
-      ? ["hist", "both"]
-      : ["today", "both", "hist"];
+      ? ["both"]
+      : ["today", "both"];
 
     let query = supabase
       .from("leaderboard")
@@ -134,9 +132,7 @@ async function loadBoard(board) {
       .in("board", boardsToInclude)
       .in("venue", VENUES);
 
-    if (board === "hist") {
-      query = query.eq("status", ACTIVE);
-    }
+    query = query.eq("status", ACTIVE);
 
     const { data, error } = await query
       .order("score", { ascending: true })
@@ -567,14 +563,17 @@ async function mergeTodayIntoHistorical() {
     return;
   }
 
-  // Optional: check if there is anything to merge
+  const dateKey = selectedTodayDateKey || todayBrisbaneKey();
+
+  // Optional: check if there is anything to merge for the selected day
   const { data, error } = await supabase
     .from("leaderboard")
-    .select("id")
+    .select("id, created_at")
     .eq("venue", currentVenue)
     .eq("status", 1)
     .eq("board", "today")
-    .limit(1);
+    .order("score", { ascending: true })
+    .limit(600);
 
   if (error) {
     console.warn("[merge] pre-check error", error);
@@ -582,7 +581,8 @@ async function mergeTodayIntoHistorical() {
     return;
   }
 
-  if (!data || !data.length) {
+  const todaysRows = (data || []).filter(r => brisbaneDayKeyFromIso(r.created_at) === dateKey);
+  if (!todaysRows.length) {
     alert("No new rows to merge.");
     return;
   }
@@ -909,69 +909,19 @@ async function confirmFromModal() {
 
   // --- DELETE ---
   if (action === "delete" && id != null) {
-    // we only care about board logic on Today
-    if (which === "today") {
-      const row = todayData.find(r => Number(r.id) === Number(id));
-      const currentBoard = row?.board || "today";
+    // Always soft delete for any board/table delete action.
+    const { error } = await supabase
+      .from("leaderboard")
+      .update({ status: 0 })
+      .eq("id", id);
 
-      if (currentBoard === "both") {
-        // Keep it on Historical only: board -> 'hist', status stays 1
-        const { error } = await supabase
-          .from("leaderboard")
-          .update({ board: "hist", status: 1 })
-          .eq("id", id);
-
-        if (error) {
-          console.warn("[delete-today/both] error", error);
-          alert("Delete failed.");
-          closeConfirmModal();
-          return;
-        }
-      } else {
-        // Normal delete from Today: status -> 0
-        const { error } = await supabase
-          .from("leaderboard")
-          .update({ status: 0 })
-          .eq("id", id);
-
-        if (error) {
-          console.warn("[delete-today] error", error);
-          alert("Delete failed.");
-          closeConfirmModal();
-          return;
-        }
-      }
-    } else if (which === "hist") {
-      // Historical delete = hard delete (status 0)
-      const row = histData.find(r => Number(r.id) === Number(id));
-      const currentBoard = row?.board || "hist";
-
-      if (currentBoard === "both") {
-        const { error } = await supabase
-          .from("leaderboard")
-          .update({ board: "today", status: 1 })
-          .eq("id", id);
-
-        if (error) {
-          console.warn("[delete-hist/both->today] error", error);
-          alert("Delete failed.");
-          closeConfirmModal();
-          return;
-        }
-      } else {
-        const { error } = await supabase
-          .from("leaderboard")
-          .update({ status: 0 })
-          .eq("id", id);
-
-        if (error) {
-          console.warn("[delete-hist] error", error);
-          alert("Delete failed.");
-          closeConfirmModal();
-          return;
-        }
-      }
+    if (error) {
+      console.warn(`[delete-${which}] error`, error);
+      alert("Delete failed.");
+      closeConfirmModal();
+      return;
     }
+
     await refreshFromServer();
     closeConfirmModal();
     return;
@@ -1017,10 +967,10 @@ async function confirmFromModal() {
     if (currentVenue === "all") {
       alert("Pick a specific venue before resetting Today.");
     } else {
-      // 1) rows that are BOTH -> keep only on Historical
+      // 1) rows that are BOTH -> keep only on Historical (historical now uses "both")
       const { error: errBoth } = await supabase
         .from("leaderboard")
-        .update({ board: "hist" })
+        .update({ board: "both" })
         .eq("venue", currentVenue)
         .eq("board", "both")
         .eq("status", 1);
@@ -1092,12 +1042,20 @@ function ensureAllHaveIds() {
   );
   GLOBAL_NEXT_ID = Number.isFinite(maxExisting) ? maxExisting : 0;
 
+  const seen = new Set();
   for (const arr of [histData, todayData]) {
     for (const r of arr) {
-      if (!Number.isInteger(r.id)) {
+      const id = Number(r.id);
+      const invalid = !Number.isInteger(id) || id <= 0;
+      const duplicate = !invalid && seen.has(id);
+      if (invalid || duplicate) {
         GLOBAL_NEXT_ID += 1;
         r.id = GLOBAL_NEXT_ID;
         changed = true;
+        seen.add(r.id);
+      } else {
+        r.id = id;
+        seen.add(id);
       }
     }
   }
@@ -1403,7 +1361,7 @@ async function applyGirlEdits(editedRows) {
  *      → update that row (board unchanged, status stays 1)
  *      → we'll later re-render Historical only.
  * - If a row is NEW (no known id in histData):
- *      → create it as a Historical-only row: board='hist', status=1.
+ *      → create it as a Historical row: board='both', status=1.
  * - If a row disappears from the table, we DO NOT delete/archive anything in Supabase.
  *
  * Returns: { changedBoth: boolean } indicating if any 'both' row was edited.
@@ -1432,7 +1390,7 @@ async function applyHistoricalEdits(editedRows) {
     if (id == null || !byId.has(id)) {
       const newId = id ?? nextGlobalId();
       payloads.push(
-        toDBPayload("hist", currentVenue, { id: newId, name: cleanName, score: cleanScore }, 1)
+        toDBPayload("both", currentVenue, { id: newId, name: cleanName, score: cleanScore }, 1)
       );
       continue;
     }
@@ -1659,23 +1617,15 @@ function removeZoomGuards() {
  *       · top N: unchanged (stay as they are, status=1)
  *       · overflow:
  *            - board="today" → status = 2 (archive)
- *            - board="both"  → board="hist" (no longer on Today)
+ *            - board="both"  → board="both" (historical-only in this setup)
  *
  * HISTORICAL MODE (used on merge):
  *   - board === "hist"
- *   - Consider ALL active rows for this venue with board IN ("today","hist","both")
- *   - Conceptually: existing hist/both + all today rows → sort → top N.
- *
- *   After sort:
- *     For top N:
- *       - board="today" → board="both", status=1
- *       - board="both"  → keep "both", status=1
- *       - board="hist"  → keep "hist", status=1
- *
- *     For the rest:
- *       - board="hist"  → status=2
- *       - board="both"  → board="today", status=1
- *       - board="today" → do nothing in Supabase
+ *   - Build candidates from:
+ *       1) selected-day Today rows (board='today', status=1, current venue)
+ *       2) all active Historical rows (board='both', status=1, current venue)
+ *   - Sort combined candidates with normal leaderboard ranking and keep top N.
+ *   - For any top-N row coming from Today, promote it to board='both'.
  *
  * After DB updates we call refreshFromServer() so UI shows fresh top 10.
  */
@@ -1684,69 +1634,19 @@ async function enforceTopNStatus(board, n = 10) {
 
   // ---------- TODAY MODE ----------
   if (board === "today") {
-    const { data, error } = await supabase
-      .from("leaderboard")
-      .select("id, board, score")
-      .in("board", ["today", "both"])
-      .eq("venue", currentVenue)
-      .eq("status", 1)
-      .order("score", { ascending: true })
-      .limit(500);
-
-    if (error) {
-      console.warn("[enforceTopN today] load error", error);
-      return;
-    }
-
-    const active = data || [];
-    const keep = active.slice(0, n);
-    const overflow = active.slice(n);
-
-    const demoteIds = [];  // overflow "both" → hist only
-    const archiveIds = []; // overflow "today" → archived
-
-    for (const r of overflow) {
-      if (r.board === "both") {
-        demoteIds.push(r.id);
-      } else if (r.board === "today") {
-        archiveIds.push(r.id);
-      }
-    }
-
-    // Overflow "both" rows: keep only on Historical
-    if (demoteIds.length) {
-      const { error: demErr } = await supabase
-        .from("leaderboard")
-        .update({ board: "hist" })
-        .in("id", demoteIds)
-        .eq("venue", currentVenue);
-      if (demErr) console.warn("[enforceTopN today] demote error", demErr);
-    }
-
-    // Overflow "today" rows: archive
-    if (archiveIds.length) {
-      const { error: archErr } = await supabase
-        .from("leaderboard")
-        .update({ status: 2 })
-        .in("id", archiveIds)
-        .eq("venue", currentVenue);
-      if (archErr) console.warn("[enforceTopN today] archive error", archErr);
-    }
-
+    // Keep DB data status/board unchanged for Today.
+    // UI load path already shows top-10 for selected date.
     await refreshFromServer();
     return;
   }
 
   // ---------- HISTORICAL MODE (merge semantics) ----------
   if (board === "hist") {
-    // Consider ALL active rows on this venue:
-    //   - board='hist' (already historical only)
-    //   - board='both' (already appear in both)
-    //   - board='today' (candidates to be added via merge)
+    const dateKey = selectedTodayDateKey || todayBrisbaneKey();
     const { data, error } = await supabase
       .from("leaderboard")
-      .select("id, board, score")
-      .in("board", ["today", "hist", "both"])
+      .select("id, board, score, created_at, updated_at")
+      .in("board", ["today", "both"])
       .eq("venue", currentVenue)
       .eq("status", 1)
       .order("score", { ascending: true })
@@ -1758,38 +1658,22 @@ async function enforceTopNStatus(board, n = 10) {
     }
 
     const rows = data || [];
-    if (!rows.length) {
+    const todayRowsForDate = rows.filter(
+      r => r.board === "today" && brisbaneDayKeyFromIso(r.created_at) === dateKey
+    );
+    const bothRows = rows.filter(r => r.board === "both");
+    const candidates = [...todayRowsForDate, ...bothRows]
+      .sort(compareLeaderboardRows);
+
+    if (!candidates.length) {
       await refreshFromServer();
       return;
     }
 
-    const top = rows.slice(0, n);
-    const overflow = rows.slice(n);
+    const top = candidates.slice(0, n);
+    const topTodayIds = top.filter(r => r.board === "today").map(r => r.id);
 
-    const topTodayIds = [];
-    const topBothIds  = [];
-    const topHistIds  = [];
-
-    const overflowTodayIds = [];
-    const overflowBothIds  = [];
-    const overflowHistIds  = [];
-
-    for (const r of top) {
-      if (r.board === "today") topTodayIds.push(r.id);
-      else if (r.board === "both") topBothIds.push(r.id);
-      else if (r.board === "hist") topHistIds.push(r.id);
-    }
-
-    for (const r of overflow) {
-      if (r.board === "today") overflowTodayIds.push(r.id);
-      else if (r.board === "both") overflowBothIds.push(r.id);
-      else if (r.board === "hist") overflowHistIds.push(r.id);
-    }
-
-    // --- Apply your exact rules ---
-
-    // 1) Top 10: ensure they are visible on Historical correctly
-    //    - topToday  → board='both', status=1
+    // Promote selected-day Today rows that made historical top N
     if (topTodayIds.length) {
       const { error: e1 } = await supabase
         .from("leaderboard")
@@ -1798,49 +1682,6 @@ async function enforceTopNStatus(board, n = 10) {
         .eq("venue", currentVenue);
       if (e1) console.warn("[enforceTopN hist] top today->both error", e1);
     }
-
-    //    - topBoth → keep 'both', ensure status=1 (defensive)
-    if (topBothIds.length) {
-      const { error: e2 } = await supabase
-        .from("leaderboard")
-        .update({ status: 1 })
-        .in("id", topBothIds)
-        .eq("venue", currentVenue);
-      if (e2) console.warn("[enforceTopN hist] top both status error", e2);
-    }
-
-    //    - topHist → keep 'hist', ensure status=1 (defensive)
-    if (topHistIds.length) {
-      const { error: e3 } = await supabase
-        .from("leaderboard")
-        .update({ status: 1 })
-        .in("id", topHistIds)
-        .eq("venue", currentVenue);
-      if (e3) console.warn("[enforceTopN hist] top hist status error", e3);
-    }
-
-    // 2) Overflow: apply “rest of the data” rules
-    //    - overflowHist → status=2
-    if (overflowHistIds.length) {
-      const { error: e4 } = await supabase
-        .from("leaderboard")
-        .update({ status: 2 })
-        .in("id", overflowHistIds)
-        .eq("venue", currentVenue);
-      if (e4) console.warn("[enforceTopN hist] overflow hist archive error", e4);
-    }
-
-    //    - overflowBoth → board='today', status=1
-    if (overflowBothIds.length) {
-      const { error: e5 } = await supabase
-        .from("leaderboard")
-        .update({ board: "today", status: 1 })
-        .in("id", overflowBothIds)
-        .eq("venue", currentVenue);
-      if (e5) console.warn("[enforceTopN hist] overflow both->today error", e5);
-    }
-
-    //    - overflowToday → do nothing (they stay on Today only)
 
     await refreshFromServer();
   }
@@ -1875,7 +1716,7 @@ function mergeEditsIntoData(which, editedRows) {
       };
     } else {
       // New row created in edit mode
-      const baseBoard = which === "hist" ? "hist" : "today";
+      const baseBoard = which === "hist" ? "both" : "today";
       rowObj = {
         id: Number.isInteger(r.id) ? r.id : nextId++,
         name: cleanName,
