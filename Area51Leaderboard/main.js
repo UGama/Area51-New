@@ -113,6 +113,9 @@ async function loadBoard(board) {
       return [];
     }
     let rows = data || [];
+    if (board === "hist") {
+      rows = rows.filter(r => Number(r.status) === ACTIVE);
+    }
     if (board === "today") {
       const dateKey = selectedTodayDateKey || todayBrisbaneKey();
       rows = rows.filter(r => brisbaneDayKeyFromIso(r.created_at) === dateKey);
@@ -144,6 +147,9 @@ async function loadBoard(board) {
     }
 
     let rows = data || [];
+    if (board === "hist") {
+      rows = rows.filter(r => Number(r.status) === ACTIVE);
+    }
 
     // For ALL → Today's leaderboard: keep rows created on selected date in Brisbane
     if (board !== "hist") {
