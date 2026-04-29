@@ -274,7 +274,10 @@ const girlData = [];
 // Ensure ids stay unique across both arrays (you already have helpers that rely on this)
 function hydrate(board, rows) {
   const target = board === 'hist' ? histData : todayData;
-  target.splice(0, target.length, ...rows);
+  const incoming = board === "hist"
+    ? [...(rows || [])].sort(compareLeaderboardRows).slice(0, 10)
+    : (rows || []);
+  target.splice(0, target.length, ...incoming);
 }
 
 function hydrateGirl(rows) {
@@ -305,9 +308,12 @@ function renderLeaderboard(rows, tableSelector) {
 
   // ASC: lower time is better
   const sorted = [...rows].sort(compareLeaderboardRows);
+  const visibleRows = tableSelector === "#rank-table-hist"
+    ? sorted.slice(0, 10)
+    : sorted;
   const showVenue = currentVenue === "all";
 
-  tbody.innerHTML = sorted
+  tbody.innerHTML = visibleRows
     .map((row, i) => {
       const rank  = i + 1;
       const time  = Number(row.score) || 0;
@@ -1244,6 +1250,8 @@ let currentVenue = "all"; // default
 
 function boardKey(board, venue){
   // board: "hist" | "today"; venue: "helensvale"...
+  // Historical rows are stored as "both" (shared with historical leaderboard).
+  if (board === "hist") return "both";
   return board;
 }
 
@@ -1409,7 +1417,7 @@ async function applyHistoricalEdits(editedRows) {
     // Skip if nothing actually changed
     if (origName === cleanName && origScore === cleanScore) continue;
 
-    const board  = orig.board || "hist";
+    const board  = (orig.board && orig.board !== "hist") ? orig.board : "both";
     const status = orig.status ?? 1;
 
     payloads.push({
