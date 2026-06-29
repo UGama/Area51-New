@@ -16,6 +16,7 @@ const todayData = [];
 const girlData = [];
 let todayEditing = false;
 let histEditing = false;
+let girlEditing = false;
 let pendingDelete = null;
 
 function rowsFromDB(rows) {
@@ -82,14 +83,19 @@ async function loadBoard(board) {
 }
 
 async function loadGirlRecord() {
-  if (!supabase || currentVenue === 'all') return [];
+  if (!supabase) return [];
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('leaderboard')
     .select('id, board, venue, name, score, status, created_at, updated_at')
-    .eq('venue', currentVenue)
     .eq('board', 'girl')
-    .eq('status', 1)
+    .eq('status', 1);
+
+  if (currentVenue !== 'all') {
+    query = query.eq('venue', currentVenue);
+  }
+
+  const { data, error } = await query
     .order('score', { ascending: true })
     .limit(1);
 
@@ -111,7 +117,11 @@ function renderHeaders(tableSelector) {
 }
 
 function renderLeaderboard(rows, tableSelector) {
-  renderHeaders(tableSelector);
+  if (tableSelector === '#rank-table-girl') {
+    renderGirlHeaders();
+  } else {
+    renderHeaders(tableSelector);
+  }
   const tbody = document.querySelector(`${tableSelector} tbody`);
   if (!tbody) return;
 
@@ -142,14 +152,26 @@ function renderGirlRecord(rows) {
   if (!tbody) return;
   const winner = rows[0];
   if (!winner) {
-    tbody.innerHTML = '<tr class="table-empty"><td colspan="3">No records yet.</td></tr>';
+    const colCount = currentVenue === 'all' ? 4 : 3;
+    tbody.innerHTML = `<tr class="table-empty"><td colspan="${colCount}">No records yet.</td></tr>`;
     return;
   }
+  const showVenue = currentVenue === 'all';
+  const venue = showVenue ? `<td>${(winner.venue || '').toString()}</td>` : '';
   tbody.innerHTML = `<tr class="table-row-height" data-id="${Number.isFinite(winner.id) ? winner.id : ''}">
       <td>1</td>
       <td>${(winner.name || '').toString()}</td>
+      ${venue}
       <td>${Number(winner.score || 0).toFixed(2)}</td>
     </tr>`;
+}
+
+function renderGirlHeaders() {
+  const theadRow = document.querySelector('#rank-table-girl thead tr');
+  if (!theadRow) return;
+  const isAll = currentVenue === 'all';
+  const cols = isAll ? ['Rank', 'Name', 'Venue', 'Time'] : ['Rank', 'Name', 'Time'];
+  theadRow.innerHTML = cols.map((title) => `<th>${title}</th>`).join('');
 }
 
 function syncTodayDatePicker() {
@@ -175,11 +197,20 @@ function updateAddButtonState() {
 
 function applyVenueButtonState() {
   const isAll = currentVenue === 'all';
-  ['#hist-edit', '#hist-add', '#hist-reset', '#today-edit', '#today-add', '#today-merge', '#girl-edit']
-    .forEach((selector) => {
-      const button = document.querySelector(selector);
-      if (button) button.disabled = isAll;
-    });
+
+  [
+    '#hist-edit',
+    '#hist-add',
+    '#hist-reset',
+    '#today-edit',
+    '#today-add',
+    '#today-merge',
+    '#girl-edit',
+    '#girl-add',
+  ].forEach((selector) => {
+    const button = document.querySelector(selector);
+    if (button) button.disabled = isAll;
+  });
 }
 
 function toSupabaseTimestamp(dateKey) {
@@ -233,14 +264,160 @@ async function reconcileTodayBoardForDate() {
   }));
 }
 
+async function addGirlRecordWithComparison(payload) {
+  if (
+    !supabase ||
+    !payload ||
+    !payload.venue ||
+    payload.venue === 'all'
+  ) {
+    return {
+      error: new Error('A specific venue is required.'),
+      result: null,
+    };
+  }
+
+  const { data: activeRows, error: lookupError } = await supabase
+    .from('leaderboard')
+    .select(
+      'id, board, venue, name, score, status, created_at, updated_at'
+    )
+    .eq('board', 'girl')
+    .eq('venue', payload.venue)
+    .eq('status', 1)
+    .order('score', { ascending: true })
+    .order('updated_at', { ascending: true })
+    .order('id', { ascending: true });
+
+  if (lookupError) {
+    return {
+      error: lookupError,
+      result: null,
+    };
+  }
+
+  const activeRecords = rowsFromDB(activeRows)
+    .sort(compareLeaderboardRows);
+
+  const currentRecord = activeRecords[0] || null;
+
+  const duplicateIds = activeRecords
+    .slice(1)
+    .map((row) => Number(row.id))
+    .filter(Number.isFinite);
+
+  if (duplicateIds.length > 0) {
+    const { error: duplicateArchiveError } = await supabase
+      .from('leaderboard')
+      .update({ status: 2 })
+      .in('id', duplicateIds)
+      .eq('board', 'girl')
+      .eq('venue', payload.venue)
+      .eq('status', 1);
+
+    if (duplicateArchiveError) {
+      return {
+        error: duplicateArchiveError,
+        result: null,
+      };
+    }
+  }
+
+  if (!currentRecord) {
+    const { error: insertError } = await supabase
+      .from('leaderboard')
+      .insert([{
+        ...payload,
+        board: 'girl',
+        venue: payload.venue,
+        status: 1,
+      }]);
+
+    return {
+      error: insertError,
+      result: insertError ? null : 'new-record-active',
+    };
+  }
+
+  const currentScore = Number(currentRecord.score);
+  const newScore = Number(payload.score);
+  const newRecordWins = newScore < currentScore;
+
+  if (!newRecordWins) {
+    const { error: insertError } = await supabase
+      .from('leaderboard')
+      .insert([{
+        ...payload,
+        board: 'girl',
+        venue: payload.venue,
+        status: 2,
+      }]);
+
+    return {
+      error: insertError,
+      result: insertError ? null : 'new-record-archived',
+    };
+  }
+
+
+  const { error: archiveError } = await supabase
+    .from('leaderboard')
+    .update({ status: 2 })
+    .eq('id', currentRecord.id)
+    .eq('board', 'girl')
+    .eq('venue', payload.venue)
+    .eq('status', 1);
+
+  if (archiveError) {
+    return {
+      error: archiveError,
+      result: null,
+    };
+  }
+
+  const { error: insertError } = await supabase
+    .from('leaderboard')
+    .insert([{
+      ...payload,
+      board: 'girl',
+      venue: payload.venue,
+      status: 1,
+    }]);
+
+  if (insertError) {
+    await supabase
+      .from('leaderboard')
+      .update({ status: 1 })
+      .eq('id', currentRecord.id)
+      .eq('board', 'girl')
+      .eq('venue', payload.venue)
+      .eq('status', 2);
+
+    return {
+      error: insertError,
+      result: null,
+    };
+  }
+
+  return {
+    error: null,
+    result: 'old-record-archived',
+  };
+}
+
 async function confirmAddFromModal() {
-  if (!supabase || currentVenue === 'all') {
-    alert('Select a specific venue to add data.');
+  if (!supabase) {
+    alert('Select a venue to add data.');
     return;
   }
 
-  const name = (document.getElementById('add-name')?.value || '').trim();
-  const scoreText = (document.getElementById('add-score')?.value || '').trim();
+  const isGirlModal = document.getElementById('girl-add-modal')?.classList.contains('hidden') === false;
+  const nameInputId = isGirlModal ? 'girl-add-name' : 'add-name';
+  const scoreInputId = isGirlModal ? 'girl-add-score' : 'add-score';
+  const boardType = isGirlModal ? 'girl' : 'today';
+
+  const name = (document.getElementById(nameInputId)?.value || '').trim();
+  const scoreText = (document.getElementById(scoreInputId)?.value || '').trim();
   const score = Number(scoreText);
 
   if (!name) {
@@ -253,28 +430,55 @@ async function confirmAddFromModal() {
     return;
   }
 
+  let venue = currentVenue;
+  if (boardType === 'girl' && currentVenue === 'all') {
+    alert('Select a specific venue to add girl record.');
+    return;
+  }
+
+  if (boardType === 'today' && currentVenue === 'all') {
+    alert('Select a specific venue to add data.');
+    return;
+  }
+
   const payload = {
     id: createNewId(),
-    board: 'today',
-    venue: currentVenue,
+    board: boardType,
+    venue: venue,
     name,
     score: Math.round(score * 100) / 100,
     status: 1,
   };
 
-  const { error } = await supabase
-    .from('leaderboard')
-    .upsert([payload], { onConflict: 'id' });
+  let saveResult;
+
+  if (boardType === 'girl') {
+    saveResult = await addGirlRecordWithComparison(payload);
+  } else {
+    saveResult = await supabase
+      .from('leaderboard')
+      .upsert([payload], { onConflict: 'id' });
+  }
+
+  const { error } = saveResult;
 
   if (error) {
     console.warn('[confirmAddFromModal] Supabase error', error);
-    alert('Failed to add the row.');
+
+    alert(
+      boardType === 'girl'
+       ? 'Failed to add or compare the girl record.'
+       : 'Failed to add the row.'
+    );
+
     return;
   }
 
-  await reconcileTodayBoardForDate();
+  if (boardType === 'today') {
+    await reconcileTodayBoardForDate();
+  }
   await refreshFromServer();
-  closeAddModal();
+  isGirlModal ? closeGirlAddModal() : closeAddModal();
 }
 
 function setTodayEditMode(enabled) {
@@ -293,8 +497,28 @@ function setTodayEditMode(enabled) {
 
     const nameCell = row.cells[1];
     const scoreCell = row.cells[2];
-    if (nameCell) nameCell.setAttribute('contenteditable', enabled ? 'true' : 'false');
-    if (scoreCell) scoreCell.setAttribute('contenteditable', enabled ? 'true' : 'false');
+    if (nameCell) {
+      nameCell.setAttribute(
+        'contenteditable',
+      enabled ? 'true' : 'false'
+    );
+    }
+
+    if (scoreCell) {
+  
+      scoreCell.setAttribute('contenteditable', 'false');
+      scoreCell.classList.toggle('score-numpad-cell', enabled);
+
+      if (enabled) {
+        scoreCell.setAttribute('tabindex', '0');
+        scoreCell.setAttribute('role', 'button');
+        scoreCell.setAttribute('title', 'Click to edit time');
+      } else {
+        scoreCell.removeAttribute('tabindex');
+        scoreCell.removeAttribute('role');
+        scoreCell.removeAttribute('title');
+      }
+  }
 
     let deleteCell = row.querySelector('.today-delete-cell');
     if (enabled) {
@@ -372,8 +596,27 @@ function setHistEditMode(enabled) {
 
     const nameCell = row.cells[1];
     const scoreCell = row.cells[2];
-    if (nameCell) nameCell.setAttribute('contenteditable', enabled ? 'true' : 'false');
-    if (scoreCell) scoreCell.setAttribute('contenteditable', enabled ? 'true' : 'false');
+    if (nameCell) {
+      nameCell.setAttribute(
+        'contenteditable',
+        enabled ? 'true' : 'false'
+      );
+    }
+
+    if (scoreCell) {
+      scoreCell.setAttribute('contenteditable', 'false');
+      scoreCell.classList.toggle('score-numpad-cell', enabled);
+
+      if (enabled) {
+        scoreCell.setAttribute('tabindex', '0');
+        scoreCell.setAttribute('role', 'button');
+        scoreCell.setAttribute('title', 'Click to edit time');
+      } else {
+        scoreCell.removeAttribute('tabindex');
+        scoreCell.removeAttribute('role');
+        scoreCell.removeAttribute('title');
+      }
+    }
 
     let deleteCell = row.querySelector('.hist-delete-cell');
     if (enabled) {
@@ -455,6 +698,104 @@ async function softDeleteHistRow(id) {
   await refreshFromServer();
 }
 
+function setGirlEditMode(enabled) {
+  const tbody = document.querySelector('#rank-table-girl tbody');
+  const button = document.getElementById('girl-edit');
+  const card = document.querySelector('#girl-card');
+  if (!tbody || !button) return;
+
+  girlEditing = enabled;
+  button.textContent = enabled ? 'Done' : 'Edit';
+  button.classList.toggle('is-editing', enabled);
+  card?.classList.toggle('editing', enabled);
+
+  [...tbody.querySelectorAll('tr')].forEach((row) => {
+    if (row.classList.contains('table-empty')) return;
+
+    const nameCell = row.cells[1];
+    const scoreCell = currentVenue === 'all' ? row.cells[3] : row.cells[2];
+    if (nameCell) {
+      nameCell.setAttribute(
+        'contenteditable',
+        enabled ? 'true' : 'false'
+      );
+    }
+
+    if (scoreCell) {
+      scoreCell.setAttribute('contenteditable', 'false');
+      scoreCell.classList.toggle('score-numpad-cell', enabled);
+
+      if (enabled) {
+        scoreCell.setAttribute('tabindex', '0');
+        scoreCell.setAttribute('role', 'button');
+        scoreCell.setAttribute('title', 'Click to edit time');
+      } else {
+        scoreCell.removeAttribute('tabindex');
+        scoreCell.removeAttribute('role');
+        scoreCell.removeAttribute('title');
+      }
+      }
+
+    let deleteCell = row.querySelector('.girl-delete-cell');
+    if (enabled) {
+      if (!deleteCell) {
+        deleteCell = document.createElement('td');
+        deleteCell.className = 'girl-delete-cell';
+        deleteCell.innerHTML = '<button class="row-delete" type="button" title="Delete row">×</button>';
+        row.appendChild(deleteCell);
+      }
+    } else if (deleteCell) {
+      deleteCell.remove();
+    }
+  });
+}
+
+function collectGirlRowsFromTable() {
+  const tbody = document.querySelector('#rank-table-girl tbody');
+  if (!tbody) return [];
+
+  return [...tbody.querySelectorAll('tr')]
+    .filter((row) => !row.classList.contains('table-empty'))
+    .map((row) => {
+      const id = Number.parseInt(row.getAttribute('data-id'), 10);
+      const nameCell = row.cells[1];
+      const scoreIdx = currentVenue === 'all' ? 3 : 2;
+      const name = (nameCell?.textContent || '').trim();
+      const score = Number.parseFloat((row.cells[scoreIdx]?.textContent || '').trim());
+      return {
+        id: Number.isFinite(id) ? id : null,
+        name,
+        score: Number.isFinite(score) ? score : 0,
+      };
+    });
+}
+
+async function saveGirlEdits() {
+  if (!supabase) return;
+
+  const rows = collectGirlRowsFromTable();
+  const updates = rows.filter((row) => Number.isFinite(row.id));
+
+  await Promise.all(updates.map((row) => supabase
+    .from('leaderboard')
+    .update({
+      name: row.name,
+      score: Math.round((Number(row.score) || 0) * 100) / 100,
+    })
+    .eq('id', row.id)));
+
+  await refreshFromServer();
+}
+
+async function softDeleteGirlRow(id) {
+  if (!supabase || !Number.isFinite(id)) return;
+  await supabase
+    .from('leaderboard')
+    .update({ status: 0 })
+    .eq('id', id);
+  await refreshFromServer();
+}
+
 async function mergeTodayIntoHistorical() {
   if (!supabase || currentVenue === 'all') return;
 
@@ -525,25 +866,86 @@ async function mergeTodayIntoHistorical() {
 
 let activeNumpadTarget = null;
 
-function openNumpad(targetInput) {
+function readNumpadTarget(target) {
+  if (!target) return '';
+
+  if (
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement
+  ) {
+    return target.value.trim();
+  }
+
+  return (target.textContent || '').trim();
+}
+
+function writeNumpadTarget(target, value) {
+  if (!target) return;
+
+  if (
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement
+  ) {
+    target.value = value;
+  } else {
+    target.textContent = value;
+  }
+
+  target.dispatchEvent(new Event('input', {
+    bubbles: true,
+  }));
+}
+
+function openNumpad(target) {
   const numpad = document.getElementById('numpad');
   const display = document.getElementById('numpad-display');
-  if (!numpad || !display || !targetInput) return;
 
-  activeNumpadTarget = targetInput;
-  display.value = targetInput.value || '';
+  if (!numpad || !display || !target) return;
+
+  activeNumpadTarget = target;
+  const isInput =
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement;
+
+  display.value = isInput
+    ? target.value.trim()
+    : '';
+
   numpad.classList.remove('hidden');
   numpad.setAttribute('aria-hidden', 'false');
-  numpad.classList.add('numpad--anchored');
+  document.body.classList.add('numpad-open');
 }
 
 function closeNumpad() {
   const numpad = document.getElementById('numpad');
   if (!numpad) return;
+
   numpad.classList.add('hidden');
   numpad.setAttribute('aria-hidden', 'true');
-  numpad.classList.remove('numpad--anchored');
+
+  document.body.classList.remove('numpad-open');
+
   activeNumpadTarget = null;
+}
+
+function acceptNumpadValue() {
+  const display = document.getElementById('numpad-display');
+
+  if (!activeNumpadTarget || !display) return;
+
+  const score = Number(display.value);
+
+  if (!Number.isFinite(score) || score <= 0) {
+    alert('Please enter a valid time.');
+    return;
+  }
+
+  writeNumpadTarget(
+    activeNumpadTarget,
+    score.toFixed(2)
+  );
+
+  closeNumpad();
 }
 
 function applyNumpadValue(value) {
@@ -581,12 +983,6 @@ function handleNumpadKey(key) {
   }
 }
 
-function acceptNumpadValue() {
-  if (!activeNumpadTarget) return;
-  activeNumpadTarget.value = document.getElementById('numpad-display')?.value || '';
-  closeNumpad();
-}
-
 function openAddModal() {
   const modal = document.getElementById('add-modal');
   const nameInput = document.getElementById('add-name');
@@ -619,6 +1015,38 @@ function closeAddModal() {
   closeNumpad();
 }
 
+function openGirlAddModal() {
+  const modal = document.getElementById('girl-add-modal');
+  const nameInput = document.getElementById('girl-add-name');
+  const scoreInput = document.getElementById('girl-add-score');
+  if (!modal || !nameInput || !scoreInput) return;
+
+  modal.classList.remove('hidden');
+  modal.removeAttribute('aria-hidden');
+  nameInput.value = '';
+  scoreInput.value = '';
+  closeNumpad();
+
+  requestAnimationFrame(() => {
+    nameInput.focus();
+    nameInput.setSelectionRange(nameInput.value.length, nameInput.value.length);
+  });
+
+  window.setTimeout(() => {
+    if (document.activeElement !== nameInput) {
+      nameInput.focus();
+    }
+  }, 220);
+}
+
+function closeGirlAddModal() {
+  const modal = document.getElementById('girl-add-modal');
+  if (!modal) return;
+  modal.classList.add('hidden');
+  modal.setAttribute('aria-hidden', 'true');
+  closeNumpad();
+}
+
 function openDeleteModal(id, type) {
   const modal = document.getElementById('delete-modal');
   if (!modal) return;
@@ -644,6 +1072,8 @@ async function confirmDelete() {
     await softDeleteTodayRow(id);
   } else if (type === 'hist') {
     await softDeleteHistRow(id);
+  } else if (type === 'girl') {
+    await softDeleteGirlRow(id);
   }
 }
 
@@ -661,11 +1091,12 @@ async function refreshFromServer() {
 
   renderLeaderboard(histData, '#rank-table-hist');
   renderLeaderboard(todayData, '#rank-table-today');
-  renderGirlRecord(girlData);
+  renderLeaderboard(girlData, '#rank-table-girl');
   applyVenueButtonState();
   updateAddButtonState();
   if (todayEditing) setTodayEditMode(true);
   if (histEditing) setHistEditMode(true);
+  if (girlEditing) setGirlEditMode(true);
 }
 
 function todayBrisbaneKey() {
@@ -702,6 +1133,15 @@ function init() {
       setHistEditMode(true);
     }
   });
+  document.getElementById('girl-edit')?.addEventListener('click', async () => {
+    if (girlEditing) {
+      await saveGirlEdits();
+      setGirlEditMode(false);
+    } else {
+      setGirlEditMode(true);
+    }
+  });
+  document.getElementById('girl-add')?.addEventListener('click', openGirlAddModal);
   document.querySelector('#rank-table-today tbody')?.addEventListener('click', async (event) => {
     if (!todayEditing) return;
     const deleteButton = event.target.closest('.row-delete');
@@ -720,6 +1160,16 @@ function init() {
     const id = Number.parseInt(row?.getAttribute('data-id'), 10);
     if (Number.isFinite(id)) {
       openDeleteModal(id, 'hist');
+    }
+  });
+  document.querySelector('#rank-table-girl tbody')?.addEventListener('click', async (event) => {
+    if (!girlEditing) return;
+    const deleteButton = event.target.closest('.row-delete');
+    if (!deleteButton) return;
+    const row = deleteButton.closest('tr');
+    const id = Number.parseInt(row?.getAttribute('data-id'), 10);
+    if (Number.isFinite(id)) {
+      openDeleteModal(id, 'girl');
     }
   });
   document.getElementById('add-cancel')?.addEventListener('click', closeAddModal);
@@ -758,15 +1208,95 @@ function init() {
     if (event.key === 'Enter' && document.activeElement?.id !== 'add-cancel') confirmAddFromModal();
   });
 
+  document.getElementById('girl-add-score')?.addEventListener('click', (event) => {
+    event.preventDefault();
+    openNumpad(event.currentTarget);
+  });
+
+  document.getElementById('girl-add-cancel')?.addEventListener('click', closeGirlAddModal);
+  document.getElementById('girl-add-confirm')?.addEventListener('click', confirmAddFromModal);
+  document.getElementById('girl-add-modal')?.addEventListener('click', (event) => {
+    if (event.target.id === 'girl-add-modal') closeGirlAddModal();
+  });
+  document.getElementById('girl-add-modal')?.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') closeGirlAddModal();
+    if (event.key === 'Enter' && document.activeElement?.id !== 'girl-add-cancel') confirmAddFromModal();
+  });
+
   document.getElementById('today-date-picker')?.addEventListener('change', (event) => {
     selectedTodayDateKey = event.target.value || todayBrisbaneKey();
     updateAddButtonState();
     refreshFromServer();
   });
+  bindEditScoreNumpad(
+    '#rank-table-today',
+    () => todayEditing
+  );
+
+  bindEditScoreNumpad(
+    '#rank-table-hist',
+    () => histEditing
+  );
+
+  bindEditScoreNumpad(
+    '#rank-table-girl',
+    () => girlEditing
+  );
+
+  document.addEventListener('keydown', (event) => {
+    const numpad = document.getElementById('numpad');
+
+    if (
+      event.key === 'Escape' &&
+      numpad &&
+      !numpad.classList.contains('hidden')
+    ) {
+      closeNumpad();
+    }
+  });
 
   document.getElementById('copyright-year').textContent = new Date().getFullYear();
   syncTodayDatePicker();
   refreshFromServer();
+}
+
+function bindEditScoreNumpad(tableSelector, isEditing) {
+  const tbody = document.querySelector(
+    `${tableSelector} tbody`
+  );
+
+  if (!tbody) return;
+
+  tbody.addEventListener('click', (event) => {
+    if (!isEditing()) return;
+
+    const scoreCell = event.target.closest(
+      '.score-numpad-cell'
+    );
+
+    if (!scoreCell) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    openNumpad(scoreCell);
+  });
+
+  
+  tbody.addEventListener('keydown', (event) => {
+    if (!isEditing()) return;
+
+    const scoreCell = event.target.closest(
+      '.score-numpad-cell'
+    );
+
+    if (!scoreCell) return;
+
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      openNumpad(scoreCell);
+    }
+  });
 }
 
 init();

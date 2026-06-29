@@ -190,6 +190,12 @@ table {
 }
 .btn:hover { background: #efe7f8; }
 .btn:active { transform: translateY(1px); }
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: .55;
+  background: #f3f0f6;
+  transform: none;
+}
 
 th, td {
   padding: 8px 10px;
@@ -278,7 +284,8 @@ table[contenteditable="true"] td {
 }
 
 .today-delete-cell,
-.hist-delete-cell {
+.hist-delete-cell,
+.girl-delete-cell {
   text-align: center;
   width: 28px;
   padding: 2px 4px;
@@ -658,4 +665,37 @@ td.has-medal[data-medal="bronze"]::after { content: "🥉"; }
   font-size: 14px;
   font-style: italic;
   color: #553c86;  /* or #555 if you want more neutral */
+}
+/* Prevent page scrolling while numpad is open */
+body.numpad-open {
+  overflow: hidden;
+}
+
+/* Full-screen numpad overlay */
+.numpad {
+  background: rgba(0, 0, 0, 0.52);
+  backdrop-filter: blur(1px);
+  -webkit-backdrop-filter: blur(1px);
+}
+
+/* Keep panel above the overlay */
+.numpad__panel {
+  position: relative;
+  z-index: 1;
+}
+
+/* Edit mode: score cell only gets a yellow dashed border */
+.score-numpad-cell {
+  cursor: pointer;
+  background: transparent;
+  outline: 1px dashed #e0a800;
+  outline-offset: -4px;
+  user-select: none;
+}
+
+.score-numpad-cell:hover,
+.score-numpad-cell:focus {
+  background: transparent;
+  outline: 1px dashed #e0a800;
+  outline-offset: -4px;
 }

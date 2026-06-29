@@ -97,8 +97,12 @@
           </thead>
           <tbody></tbody>
         </table>
-        <div class="actions actions--single">
-          <button id="girl-edit" class="btn">Edit</button>
+        <div class="actions">
+          <div class="actions-left"></div>
+          <div class="actions-right">
+            <button id="girl-edit" class="btn">Edit</button>
+            <button id="girl-add" class="btn">Add</button>
+          </div>
         </div>
       </section>
     </div>
@@ -126,6 +130,31 @@
     <div class="modal__actions">
       <button id="add-cancel" class="btn">Cancel</button>
       <button id="add-confirm" class="btn btn--primary">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Girl Record Modal -->
+<div id="girl-add-modal" class="modal hidden" aria-hidden="true">
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="girl-add-title">
+    <h3 id="girl-add-title" class="modal__title">Add Girl Record</h3>
+
+    <div class="modal__field">
+      <label for="girl-add-name">Name</label>
+      <input id="girl-add-name" type="text" placeholder="e.g., Aria" />
+    </div>
+
+    <!-- Time -->
+    <div class="modal__field">
+      <label for="girl-add-score">Time</label>
+      <input id="girl-add-score" type="text" inputmode="decimal" autocomplete="off"
+      autocapitalize="none" spellcheck="false" readonly aria-readonly="true"
+      placeholder="e.g., 5.35" />
+    </div>
+
+    <div class="modal__actions">
+      <button id="girl-add-cancel" class="btn">Cancel</button>
+      <button id="girl-add-confirm" class="btn btn--primary">Confirm</button>
     </div>
   </div>
 </div>
