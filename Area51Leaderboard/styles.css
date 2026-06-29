@@ -54,15 +54,26 @@ html, body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto,
 .page { padding: 16px; }
 
 /* Two-column layout */
-.layout {
+/* .layout {
   display: grid;
-  grid-template-columns: 1fr 1fr; /* historical wider, today's narrower */
+  grid-template-columns: 1fr 1fr; 
   grid-template-areas:
     "hist today"
     "girl .";
   gap: 16px;
   align-items: stretch;
+} */
+
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-areas:
+    "hist today"
+    "girl .";
+  gap: 16px;
+  align-items: start;
 }
+
 @media (max-width: 900px) {
   .layout {
     grid-template-columns: 1fr;
@@ -95,7 +106,7 @@ html, body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto,
   padding: 16px;
 }
 .card h2 {
-  margin: 0 0 12px 0;
+  margin: 0 0 8px 0;
   color: #331b48;
   font-size: 20px;
   text-align: center;
@@ -125,12 +136,27 @@ html, body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto,
 }
 
 .card-hist { grid-area: hist; }
+
 .today-stack {
   grid-area: today;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  position: relative;
+  display: block;
 }
+
+.card-today {
+  margin: 0;
+}
+
+.today-social--outside {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+
+  width: max-content;
+  margin-top: 0;
+  z-index: 1;
+}
+
 .card-today { margin: 0; }
 #girl-card { grid-area: girl; }
 
@@ -141,11 +167,15 @@ table {
   font-size: 18px;
 }
 
+.table-row-height {
+  height: 38px;
+}
+
 /* Action bars under each leaderboard */
 .actions {
   display: flex;
   gap: 8px;
-  margin-top: 12px;
+  margin-top: 8px;
   flex-wrap: wrap;
 }
 
@@ -195,8 +225,7 @@ thead th {
 
 /* ===== Edit mode visuals ===== */
 .card.editing {
-  outline: 3px solid #ffb703;            /* bold amber frame */
-  box-shadow: 0 8px 20px rgba(255,183,3,.35);
+  box-shadow: 0 0 0 2px #ffb703, 0 8px 20px rgba(255,183,3,.35);
   position: relative;
 }
 .card.editing::after {
@@ -206,6 +235,7 @@ thead th {
   background: #ffb703; color: #1a1a1a;
   padding: 2px 8px; border-radius: 999px;
   letter-spacing: .3px;
+  pointer-events: none;
 }
 table[contenteditable="true"] {
   background: #fff7db;                    /* soft amber sheet */
@@ -214,6 +244,7 @@ table[contenteditable="true"] {
 table[contenteditable="true"] td {
   outline: 1px dashed #e0a800;            /* show editable cells */
   outline-offset: -3px;
+  vertical-align: middle;
 }
 .btn.is-editing {
   background: #ffb703; color: #1a1a1a; border-color: #e0a800;
@@ -224,24 +255,44 @@ table[contenteditable="true"] td {
   border: 1px solid #ffe08a;
 }
 /* Row delete button (shown only in Edit mode) */
-.row-del {
+.row-delete {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px; height: 26px;
-  border-radius: 6px;
-  border: 1px solid #ff8b8b;
-  background: #ffe5e5;
-  color: #b30000;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid #e53935;
+  background: transparent;
+  color: #e53935;
+  font-size: 13px;
   font-weight: 800;
   line-height: 1;
   cursor: pointer;
+  box-sizing: border-box;
 }
 
-.row-del:hover { background: #ffd1d1; }
-th.del-col, td.del-col { text-align: center; width: 40px; }
-.btn--danger { background: #e53935; color: #fff; border-color: #d32f2f; }
-.btn--danger:hover { filter: brightness(1.05); }
+.row-delete:hover {
+  background: rgba(229, 57, 53, 0.08);
+}
+
+.today-delete-cell,
+.hist-delete-cell {
+  text-align: center;
+  width: 28px;
+  padding: 2px 4px;
+  box-sizing: border-box;
+}
+
+.btn--danger {
+  background: #e53935;
+  color: #fff;
+  border-color: #d32f2f;
+}
+.btn--danger:hover {
+  filter: brightness(1.05);
+}
 
 /* Split actions: left cluster vs right cluster */
 .actions { 

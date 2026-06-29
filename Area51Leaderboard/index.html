@@ -70,7 +70,6 @@
           <div class="actions">
             <div class="actions-left">
               <button id="today-merge" class="btn btn--left-sep">Merge</button>
-              <button id="today-reset" class="btn btn--danger">Reset</button>
             </div>
             <div class="actions-right">
               <button id="today-edit"  class="btn">Edit</button>
@@ -118,9 +117,9 @@
     <!-- Time -->
     <div class="modal__field">
       <label for="add-score">Time</label>
-      <!-- readonly prevents the OS keyboard; inputmode hints desktop/ATs -->
       <input id="add-score" type="text" inputmode="decimal" autocomplete="off"
-      placeholder="e.g., 5.35" readonly />
+      autocapitalize="none" spellcheck="false" readonly aria-readonly="true"
+      placeholder="e.g., 5.35" />
     </div>
 
 
