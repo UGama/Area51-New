@@ -153,7 +153,7 @@ function renderRosterGrid(assignmentsMap) {
 
   // build per-day half-hour cells
   const dayCells = daysOfWeek.map(() =>
-    Array.from({ length: rowCount }, () => ({ label: "", color: "" }))
+    Array.from({ length: rowCount }, () => ({ label: "", color: "", shiftName: "" }))
   );
 
   const slotIdx = (t) => timeSlots.indexOf(t);
@@ -169,6 +169,7 @@ function renderRosterGrid(assignmentsMap) {
         const cell = dayCells[dIdx][i];
         cell.label = label;
         cell.color = colorForShift(shift.name, dIdx);
+        cell.shiftName = shift.name;
       }
     });
   });
@@ -184,16 +185,77 @@ function renderRosterGrid(assignmentsMap) {
       while (
         r + span < rowCount &&
         dayCells[dIdx][r + span].label === label &&
-        dayCells[dIdx][r + span].color === color
+        dayCells[dIdx][r + span].color === color &&
+        dayCells[dIdx][r + span].shiftName === cell.shiftName
       ) {
         span++;
       }
       if (label) {
-        const block = addItem(label, "roster-block", dIdx + 2, r + 2, span);
+        const block = addItem("", "roster-block", dIdx + 2, r + 2, span);
         block.style.background = color || colorForShift("", dIdx);
+        renderShiftAssignments(block, assignmentsMap[`${day}-${cell.shiftName}`] || []);
       }
       r += span;
     }
+  });
+}
+
+function positionClass(position) {
+  const normalized = normalizeText(position);
+  if (normalized === "cafe") return "position-cafe";
+  if (normalized === "floor") return "position-floor";
+  if (normalized === "reception") return "position-reception";
+  return "position-other";
+}
+
+function positionIcon(position) {
+  const normalized = normalizeText(position);
+  if (normalized === "cafe") return "pic/cafe.png";
+  if (normalized === "floor") return "pic/floor.png";
+  if (normalized === "reception") return "pic/reception.png";
+  return "pic/employees.png";
+}
+
+function renderShiftAssignments(block, assigned) {
+  const groups = assigned.reduce((acc, item) => {
+    const key = normalizeText(item.position) || "other";
+    if (!acc.has(key)) {
+      acc.set(key, { position: item.position || "other", names: [] });
+    }
+    acc.get(key).names.push(item.name);
+    return acc;
+  }, new Map());
+
+  groups.forEach((group) => {
+    const row = document.createElement("div");
+    row.className = `roster-position ${positionClass(group.position)}`;
+
+    const position = document.createElement("span");
+    position.className = "roster-position__role";
+
+    const icon = document.createElement("img");
+    icon.className = "roster-position__icon";
+    icon.src = positionIcon(group.position);
+    icon.alt = "";
+
+    const label = document.createElement("span");
+    label.textContent = `${group.position}:`;
+
+    position.appendChild(icon);
+    position.appendChild(label);
+
+    const names = document.createElement("ul");
+    names.className = "roster-position__names";
+    group.names.forEach((person) => {
+      const name = document.createElement("li");
+      name.className = "roster-position__name";
+      name.textContent = person;
+      names.appendChild(name);
+    });
+
+    row.appendChild(position);
+    row.appendChild(names);
+    block.appendChild(row);
   });
 }
 
@@ -211,6 +273,106 @@ function renderDetail(row) {
   detailPosition.textContent = row.position || "—";
   detailType.textContent = row.type || "—";
   currentDetail = row;
+}
+
+function matchingEmployees(query) {
+  const normalized = normalizeText(query);
+  if (!normalized) return [];
+  return employees
+    .filter((emp) => normalizeText(emp.name).includes(normalized))
+    .slice(0, 8);
+}
+
+function closeSuggestions(listEl = suggestionsEl) {
+  if (!listEl) return;
+  listEl.innerHTML = "";
+  listEl.classList.remove("open");
+}
+
+function selectEmployee(row) {
+  renderDetail(row);
+  searchInput.value = row?.name || "";
+  closeSuggestions();
+}
+
+function renderNameSuggestions(query, listEl, onSelect) {
+  if (!listEl) return;
+  listEl.innerHTML = "";
+  const matches = matchingEmployees(query);
+
+  if (!query.trim()) {
+    closeSuggestions(listEl);
+    return;
+  }
+
+  if (!matches.length) {
+    const empty = document.createElement("li");
+    empty.className = "empty";
+    empty.textContent = "No matching employees.";
+    listEl.appendChild(empty);
+    listEl.classList.add("open");
+    return;
+  }
+
+  matches.forEach((row) => {
+    const item = document.createElement("li");
+    item.textContent = row.name || "Unnamed";
+    item.addEventListener("mousedown", (event) => {
+      event.preventDefault();
+      onSelect(row);
+    });
+    listEl.appendChild(item);
+  });
+  listEl.classList.add("open");
+}
+
+function renderSearchSuggestions(query) {
+  renderNameSuggestions(query, suggestionsEl, selectEmployee);
+}
+
+function wireEmployeeSearch() {
+  if (!searchInput || !searchForm) return;
+
+  searchInput.addEventListener("input", () => {
+    renderSearchSuggestions(searchInput.value);
+  });
+
+  searchInput.addEventListener("focus", () => {
+    renderSearchSuggestions(searchInput.value);
+  });
+
+  searchInput.addEventListener("blur", () => {
+    setTimeout(closeSuggestions, 120);
+  });
+
+  searchForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const query = searchInput.value;
+    const exact = employees.find((emp) => normalizeText(emp.name) === normalizeText(query));
+    const selected = exact || matchingEmployees(query)[0];
+    if (selected) selectEmployee(selected);
+  });
+}
+
+function wireRuleNameSearch() {
+  if (!ruleNameInput || !ruleNameSuggestionsEl) return;
+
+  const selectRuleEmployee = (row) => {
+    ruleNameInput.value = row?.name || "";
+    closeSuggestions(ruleNameSuggestionsEl);
+  };
+
+  ruleNameInput.addEventListener("input", () => {
+    renderNameSuggestions(ruleNameInput.value, ruleNameSuggestionsEl, selectRuleEmployee);
+  });
+
+  ruleNameInput.addEventListener("focus", () => {
+    renderNameSuggestions(ruleNameInput.value, ruleNameSuggestionsEl, selectRuleEmployee);
+  });
+
+  ruleNameInput.addEventListener("blur", () => {
+    setTimeout(() => closeSuggestions(ruleNameSuggestionsEl), 120);
+  });
 }
 
 function renderRules() {
@@ -244,6 +406,59 @@ const wireGenerate = (btn) => {
     });
   }
 };
+
+function normalizeText(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function timesOverlap(startA, endA, startB, endB) {
+  const aStart = timeIndex[startA];
+  const aEnd = timeIndex[endA];
+  const bStart = timeIndex[startB];
+  const bEnd = timeIndex[endB];
+  if ([aStart, aEnd, bStart, bEnd].some((idx) => idx === undefined)) return false;
+  return aStart < bEnd && bStart < aEnd;
+}
+
+function ruleEffectFor(name, day, shift) {
+  return rules.reduce(
+    (effect, rule) => {
+      const sameEmployee = normalizeText(rule.name) === normalizeText(name);
+      const sameDay = rule.day === day;
+      const sameTime = timesOverlap(rule.start, rule.end, shift.start, shift.end);
+      if (!sameEmployee || !sameDay || !sameTime) return effect;
+
+      if (rule.require === "can't") effect.blocked = true;
+      if (rule.require === "must") effect.must = true;
+      return effect;
+    },
+    { blocked: false, must: false }
+  );
+}
+
+function hasPosition(emp, position) {
+  const employeePosition = normalizeText(emp.position);
+  const requiredPosition = normalizeText(position);
+  if (!employeePosition || !requiredPosition) return false;
+  return employeePosition
+    .split(/[,/&]+|\band\b/)
+    .map((part) => part.trim())
+    .some((part) => part === requiredPosition);
+}
+
+function getShiftLabel(assignmentsMap, day, shiftName) {
+  const assigned = assignmentsMap?.[`${day}-${shiftName}`] || [];
+  return assigned.map((item) => `${item.position}: ${item.name}`).join("\n");
+}
+
+function colorForShift(shiftName, dayIndex) {
+  const palettes = {
+    Morning: ["#b8d8f0", "#badfc4", "#efd384", "#e9b6bf", "#c9bff0", "#b7d9d5", "#e1bfaa"],
+    Night: ["#9fb4e8", "#9fceb8", "#e6b65f", "#dc97a6", "#b0a0e0", "#95c8c3", "#ce9f85"],
+  };
+  const colors = palettes[shiftName] || palettes.Morning;
+  return colors[dayIndex % colors.length];
+}
 
 function generateRoster() {
   if (!employees.length) {
@@ -326,4 +541,6 @@ function generateRoster() {
 
 fetchEmployees();
 renderRosterGrid();
+wireEmployeeSearch();
+wireRuleNameSearch();
 wireGenerate(rosterGenerateBtn);

@@ -385,20 +385,83 @@ body { background: #f6f4fb; color: #1f1630; }
   height: calc(100% - 6px);
   margin: 3px;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  text-align: center;
-  color: #fff;
+  gap: 8px;
+  color: #20172d;
   font-weight: 700;
   font-size: 12px;
-  padding: 2px 8px;
+  padding: 6px;
   box-sizing: border-box;
   border-radius: 12px;
-  box-shadow: 0 2px 6px rgba(0,0,0,.15);
-  border: 1px solid rgba(255,255,255,.35);
+  box-shadow: 0 2px 5px rgba(49,35,73,.14);
+  border: 1px solid rgba(49,35,73,.16);
   background-clip: padding-box;
 }
 .roster-half { height: 50%; }
+
+.roster-position {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  row-gap: 2px;
+  padding: 3px 6px;
+  box-sizing: border-box;
+  border-radius: 7px;
+  border: 1px solid rgba(32,23,45,.12);
+  text-align: left;
+}
+
+.roster-position__role {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  text-transform: capitalize;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.15;
+}
+
+.roster-position__icon {
+  width: 14px;
+  height: 14px;
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+
+.roster-position__names {
+  margin: 1px 0 0;
+  padding-left: 18px;
+  min-width: 0;
+}
+
+.roster-position__name {
+  padding-left: 1px;
+  overflow-wrap: anywhere;
+  line-height: 1.2;
+}
+
+.position-floor {
+  background: rgba(44,112,181,.18);
+  color: #173b61;
+}
+
+.position-cafe {
+  background: rgba(35,132,92,.18);
+  color: #18543d;
+}
+
+.position-reception {
+  background: rgba(159,94,24,.2);
+  color: #61380f;
+}
+
+.position-other {
+  background: rgba(73,58,103,.16);
+  color: #2f2546;
+}
 
 @media (max-width: 540px){
   .panel { padding: 14px 16px; }
