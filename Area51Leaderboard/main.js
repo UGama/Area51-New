@@ -8,6 +8,8 @@ const SUPABASE_ANON = window.SUPABASE_ANON;
 const supabase = window.supabase?.createClient(SUPABASE_URL, SUPABASE_ANON);
 
 const VENUES = ["helensvale", "redcliffe", "gardencity"];
+const BRISBANE_TIME_ZONE = 'Australia/Brisbane';
+const BRISBANE_UTC_OFFSET = '+10:00';
 let currentVenue = "all";
 let selectedTodayDateKey = todayBrisbaneKey();
 
@@ -19,6 +21,39 @@ let histEditing = false;
 let girlEditing = false;
 let pendingDelete = null;
 
+function brisbaneParts(date) {
+  return Object.fromEntries(new Intl.DateTimeFormat('en-CA', {
+    timeZone: BRISBANE_TIME_ZONE,
+    hourCycle: 'h23',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  }).formatToParts(date).map((part) => [part.type, part.value]));
+}
+
+function toBrisbaneTimestamp(value) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+
+  const parts = brisbaneParts(date);
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:${parts.second}${BRISBANE_UTC_OFFSET}`;
+}
+
+function brisbaneDayRangeForSupabase(dateKey) {
+  const start = new Date(`${dateKey}T00:00:00.000${BRISBANE_UTC_OFFSET}`);
+  if (Number.isNaN(start.getTime())) return null;
+
+  const end = new Date(start.getTime() + 24 * 60 * 60 * 1000 - 1);
+  return {
+    start: start.toISOString(),
+    end: end.toISOString(),
+  };
+}
+
 function rowsFromDB(rows) {
   return (rows || [])
     .map((row) => ({
@@ -28,8 +63,8 @@ function rowsFromDB(rows) {
       venue: row.venue || "",
       board: row.board || "",
       status: Number(row.status) || 0,
-      created_at: row.created_at || null,
-      updated_at: row.updated_at || null,
+      created_at: toBrisbaneTimestamp(row.created_at),
+      updated_at: toBrisbaneTimestamp(row.updated_at),
     }))
     .filter((row) => row.name !== "");
 }
@@ -66,9 +101,11 @@ async function loadBoard(board) {
   } else if (board === 'today') {
     query.in('board', ['today', 'hist']);
     if (selectedTodayDateKey) {
+      const range = brisbaneDayRangeForSupabase(selectedTodayDateKey);
+      if (!range) return [];
       query
-        .gte('created_at', `${selectedTodayDateKey}T00:00:00Z`)
-        .lte('created_at', `${selectedTodayDateKey}T23:59:59.999Z`);
+        .gte('created_at', range.start)
+        .lte('created_at', range.end);
     }
   }
 
@@ -214,11 +251,11 @@ function applyVenueButtonState() {
 }
 
 function toSupabaseTimestamp(dateKey) {
-  if (!dateKey) return new Date().toISOString();
-
   const now = new Date();
-  const timePart = now.toISOString().slice(11, 19);
-  const date = new Date(`${dateKey}T${timePart}+10:00`);
+  if (!dateKey) return now.toISOString();
+
+  const parts = brisbaneParts(now);
+  const date = new Date(`${dateKey}T${parts.hour}:${parts.minute}:${parts.second}${BRISBANE_UTC_OFFSET}`);
   return Number.isNaN(date.getTime()) ? new Date().toISOString() : date.toISOString();
 }
 
@@ -230,28 +267,24 @@ async function reconcileTodayBoardForDate() {
   if (!supabase || currentVenue === 'all') return;
 
   const dateKey = selectedTodayDateKey || todayBrisbaneKey();
+  const range = brisbaneDayRangeForSupabase(dateKey);
+  if (!range) return;
+
   const { data, error } = await supabase
     .from('leaderboard')
     .select('id, board, venue, name, score, status, created_at, updated_at')
     .eq('venue', currentVenue)
     .eq('board', 'today')
     .in('status', [1, 2])
-    .gte('created_at', `${dateKey}T00:00:00Z`)
-    .lte('created_at', `${dateKey}T23:59:59.999Z`);
+    .gte('created_at', range.start)
+    .lte('created_at', range.end);
 
   if (error) {
     console.warn('[reconcileTodayBoardForDate] Supabase error', error);
     return;
   }
 
-  const rows = (data || [])
-    .map((row) => ({
-      ...row,
-      score: Number(row.score) || 0,
-      status: Number(row.status) || 0,
-    }))
-    .filter((row) => row.name)
-    .sort(compareLeaderboardRows);
+  const rows = rowsFromDB(data).sort(compareLeaderboardRows);
 
   const topTenIds = new Set(rows.slice(0, 10).map((row) => row.id).filter(Number.isFinite));
 
@@ -449,6 +482,10 @@ async function confirmAddFromModal() {
     score: Math.round(score * 100) / 100,
     status: 1,
   };
+
+  if (boardType === 'today') {
+    payload.created_at = toSupabaseTimestamp(selectedTodayDateKey || todayBrisbaneKey());
+  }
 
   let saveResult;
 
@@ -800,6 +837,8 @@ async function mergeTodayIntoHistorical() {
   if (!supabase || currentVenue === 'all') return;
 
   const dateKey = selectedTodayDateKey || todayBrisbaneKey();
+  const range = brisbaneDayRangeForSupabase(dateKey);
+  if (!range) return;
 
   const [{ data: histRows, error: histError }, { data: todayRows, error: todayError }] = await Promise.all([
     supabase
@@ -816,8 +855,8 @@ async function mergeTodayIntoHistorical() {
       .eq('venue', currentVenue)
       .eq('board', 'today')
       .eq('status', 1)
-      .gte('created_at', `${dateKey}T00:00:00Z`)
-      .lte('created_at', `${dateKey}T23:59:59.999Z`)
+      .gte('created_at', range.start)
+      .lte('created_at', range.end)
       .order('score', { ascending: true })
       .limit(200),
   ]);
@@ -827,7 +866,8 @@ async function mergeTodayIntoHistorical() {
     return;
   }
 
-  const todayCandidates = (todayRows || []).filter((row) => row.name);
+  const histCandidates = rowsFromDB(histRows);
+  const todayCandidates = rowsFromDB(todayRows);
   if (!todayCandidates.length) {
     alert('No update');
     return;
@@ -836,7 +876,7 @@ async function mergeTodayIntoHistorical() {
   const merged = [];
   const seenIds = new Set();
 
-  for (const row of [...(histRows || []), ...todayCandidates]) {
+  for (const row of [...histCandidates, ...todayCandidates]) {
     const id = Number(row.id);
     if (!Number.isFinite(id) || seenIds.has(id)) continue;
     seenIds.add(id);
@@ -1100,7 +1140,7 @@ async function refreshFromServer() {
 }
 
 function todayBrisbaneKey() {
-  return new Date().toLocaleDateString('en-CA', { timeZone: 'Australia/Brisbane' });
+  return new Date().toLocaleDateString('en-CA', { timeZone: BRISBANE_TIME_ZONE });
 }
 
 function setVenue(venue) {
