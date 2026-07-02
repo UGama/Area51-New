@@ -1,0 +1,19 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+
+  "name": "area51-cloudflare-chat",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-02",
+
+  "observability": {
+    "enabled": true
+  },
+
+  "ai_search": [
+    {
+      "binding": "AREA51_SEARCH",
+      "instance_name": "area51-search",
+      "remote": true
+    }
+  ]
+}

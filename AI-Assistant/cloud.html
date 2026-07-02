@@ -1,0 +1,353 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Area51 AI Assistant</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <img class="logo" src="pic/logo.png" alt="Area51 logo">
+      <span class="brand">Area51 AI Assistant</span>
+      <a class="return-link" href="index.html" aria-label="Return to chatbot selection">← Modes</a>
+    </header>
+
+    <main class="page">
+      <section class="chat-shell">
+        <form id="endpoint-form" class="endpoint-form">
+          <label for="endpoint">Cloudflare Worker endpoint</label>
+          <div class="input-row">
+            <input id="endpoint" autocomplete="off" placeholder="http://localhost:8787/chat" />
+            <button type="submit">Save</button>
+          </div>
+        </form>
+
+        <div id="chat" class="chat-window"></div>
+
+        <form id="form" class="chat-form">
+          <label class="visually-hidden" for="input">Your message</label>
+          <div class="input-row">
+            <input id="input" autocomplete="off" placeholder="Ask Area51 anything..." />
+            <button id="send-btn" type="submit">Send</button>
+          </div>
+        </form>
+      </section>
+    </main>
+
+    <script>
+      const endpointStorageKey = "area51CloudflareEndpoint";
+      const defaultEndpoint = "http://localhost:8787/chat";
+
+      const endpointForm = document.getElementById("endpoint-form");
+      const endpointInput = document.getElementById("endpoint");
+      const chat = document.getElementById("chat");
+      const form = document.getElementById("form");
+      const input = document.getElementById("input");
+      const sendBtn = document.getElementById("send-btn");
+      const history = [];
+      let thinkingMessage = null;
+
+      const urlEndpoint = new URLSearchParams(window.location.search).get("endpoint");
+      endpointInput.value = urlEndpoint || localStorage.getItem(endpointStorageKey) || defaultEndpoint;
+      if (urlEndpoint) {
+        localStorage.setItem(endpointStorageKey, urlEndpoint);
+      }
+
+      function escapeHtml(text) {
+        return text
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+      }
+
+      function formatInline(text) {
+        return escapeHtml(text)
+          .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+          .replace(/`([^`]+)`/g, "<code>$1</code>")
+          .replace(
+            /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,
+            '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>',
+          );
+      }
+
+      function renderFormattedText(target, text) {
+        const lines = text.split(/\r?\n/);
+        const html = [];
+        let paragraph = [];
+        let listOpen = false;
+
+        function flushParagraph() {
+          if (paragraph.length) {
+            html.push(`<p>${paragraph.join(" ")}</p>`);
+            paragraph = [];
+          }
+        }
+
+        function closeList() {
+          if (listOpen) {
+            html.push("</ul>");
+            listOpen = false;
+          }
+        }
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+
+          if (!trimmed) {
+            flushParagraph();
+            closeList();
+            continue;
+          }
+
+          if (/^-{3,}$/.test(trimmed)) {
+            flushParagraph();
+            closeList();
+            html.push("<hr>");
+            continue;
+          }
+
+          const heading = trimmed.match(/^(#{2,4})\s+(.+)$/);
+          if (heading) {
+            flushParagraph();
+            closeList();
+            const level = Math.min(heading[1].length, 4);
+            html.push(`<h${level}>${formatInline(heading[2])}</h${level}>`);
+            continue;
+          }
+
+          const bullet = trimmed.match(/^[-*]\s+(.+)$/);
+          if (bullet) {
+            flushParagraph();
+            if (!listOpen) {
+              html.push("<ul>");
+              listOpen = true;
+            }
+            html.push(`<li>${formatInline(bullet[1])}</li>`);
+            continue;
+          }
+
+          paragraph.push(formatInline(trimmed));
+        }
+
+        flushParagraph();
+        closeList();
+
+        target.classList.add("bubble-rich");
+        target.innerHTML = html.join("") || formatInline(text);
+      }
+
+      function createTypingBubble() {
+        const bubble = document.createElement("div");
+        bubble.className = "bubble bubble-typing";
+        bubble.innerHTML = '<span class="dot"></span><span class="dot"></span><span class="dot"></span>';
+        return bubble;
+      }
+
+      function createMessage(text, role, opts = {}) {
+        const row = document.createElement("div");
+        row.className = `message ${role}`;
+
+        const avatar = document.createElement("div");
+        avatar.className = "avatar";
+        if (role === "bot") {
+          const img = document.createElement("img");
+          img.src = "pic/logo.png";
+          img.alt = "Area51 AI logo";
+          avatar.appendChild(img);
+        } else {
+          avatar.textContent = "You";
+        }
+
+        const bubble = opts.typing ? createTypingBubble() : document.createElement("div");
+        if (!opts.typing) bubble.className = "bubble";
+
+        if (!opts.typing) {
+          if (role === "bot") {
+            renderFormattedText(bubble, text);
+          } else {
+            bubble.textContent = text;
+          }
+        }
+
+        row.appendChild(avatar);
+        row.appendChild(bubble);
+        chat.appendChild(row);
+        chat.scrollTop = chat.scrollHeight;
+        return { row, bubble };
+      }
+
+      function showThinking() {
+        thinkingMessage = createMessage("...", "bot", { typing: true });
+      }
+
+      function clearThinking() {
+        if (thinkingMessage) {
+          thinkingMessage.row.remove();
+          thinkingMessage = null;
+        }
+      }
+
+      function remember(role, content) {
+        history.push({ role, content });
+        if (history.length > 8) {
+          history.splice(0, history.length - 8);
+        }
+      }
+
+      function endpointUrl() {
+        const value = endpointInput.value.trim() || defaultEndpoint;
+        return value.endsWith("/chat") ? value : `${value.replace(/\/+$/, "")}/chat`;
+      }
+
+      function cloudFetchErrorMessage(endpoint, err) {
+        const reason = err instanceof Error ? err.message : "Failed to fetch";
+        const checks = [
+          `Could not reach ${endpoint}.`,
+          "If you are using local Cloudflare dev, run `npm run dev` in `cloud/area51-cloudflare-chat` first.",
+          "If this page is opened from an HTTPS site, use an HTTPS deployed Worker URL instead of localhost or http.",
+          "Make sure the endpoint ends with `/chat` and the Worker is deployed.",
+        ];
+
+        return `${reason}\n\n${checks.join("\n")}`;
+      }
+
+      function textFromPayload(value) {
+        if (typeof value === "string") return value;
+        if (!value || typeof value !== "object") return "";
+
+        const direct =
+          value.response ||
+          value.content ||
+          value.text ||
+          value.message ||
+          value.delta;
+
+        if (typeof direct === "string") return direct;
+        if (direct && typeof direct === "object") {
+          const nested = textFromPayload(direct);
+          if (nested) return nested;
+        }
+
+        if (Array.isArray(value.choices)) {
+          return value.choices.map(textFromPayload).join("");
+        }
+
+        return "";
+      }
+
+      function parseStreamChunk(raw, state) {
+        state.buffer += raw;
+        const parts = state.buffer.split(/\n\n+/);
+        state.buffer = parts.pop() || "";
+
+        return parts.map((part) => {
+          const dataLines = part
+            .split(/\r?\n/)
+            .filter((line) => line.startsWith("data:"))
+            .map((line) => line.replace(/^data:\s?/, ""));
+
+          if (!dataLines.length) return part;
+
+          return dataLines.map((line) => {
+            if (line === "[DONE]") return "";
+
+            try {
+              return textFromPayload(JSON.parse(line));
+            } catch {
+              return line;
+            }
+          }).join("");
+        }).join("");
+      }
+
+      async function readCloudflareResponse(res, bubble) {
+        if (!res.body) {
+          const data = await res.json().catch(() => ({}));
+          return data.message || data.reply || data.error || "";
+        }
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        const state = { buffer: "" };
+        let reply = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const raw = decoder.decode(value, { stream: true });
+          const next = raw.includes("data:") || state.buffer
+            ? parseStreamChunk(raw, state)
+            : raw;
+
+          if (next) {
+            reply += next;
+            bubble.textContent = reply;
+            chat.scrollTop = chat.scrollHeight;
+          }
+        }
+
+        const tail = parseStreamChunk("\n\n", state);
+        if (tail) {
+          reply += tail;
+          bubble.textContent = reply;
+        }
+
+        return reply.trim();
+      }
+
+      endpointForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        localStorage.setItem(endpointStorageKey, endpointUrl());
+        createMessage("Cloudflare endpoint saved.", "bot");
+      });
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const text = input.value.trim();
+        if (!text) return;
+
+        createMessage(text, "user");
+        input.value = "";
+        input.focus();
+        sendBtn.disabled = true;
+        showThinking();
+
+        try {
+          const endpoint = endpointUrl();
+          const res = await fetch(endpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              message: text,
+              history,
+            }),
+          });
+
+          if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            throw new Error(data.error || `Cloudflare request failed with status ${res.status}`);
+          }
+
+          clearThinking();
+          const { bubble } = createMessage("", "bot");
+          const reply = await readCloudflareResponse(res, bubble);
+          renderFormattedText(bubble, reply || "I don't have a response for that yet.");
+          remember("user", text);
+          remember("assistant", reply);
+        } catch (err) {
+          clearThinking();
+          createMessage(cloudFetchErrorMessage(endpointUrl(), err), "bot");
+          console.error(err);
+        } finally {
+          sendBtn.disabled = false;
+        }
+      });
+
+      createMessage("Hi, I'm Area51 AI robot, how can I help you?", "bot");
+    </script>
+    <div class="copyright">© 2026 Mian</div>
+  </body>
+</html>
