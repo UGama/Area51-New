@@ -387,6 +387,10 @@ function selectEmployee(row) {
   closeSuggestions();
 }
 
+function showInvalidEmployeeNameModal() {
+  showModal("Please choose a valid employee name from the suggestions.");
+}
+
 function renderNameSuggestions(query, listEl, onSelect) {
   if (!listEl) return;
   listEl.innerHTML = "";
@@ -440,9 +444,13 @@ function wireEmployeeSearch() {
   searchForm.addEventListener("submit", (event) => {
     event.preventDefault();
     const query = searchInput.value;
-    const exact = employees.find((emp) => normalizeText(emp.name) === normalizeText(query));
-    const selected = exact || matchingEmployees(query)[0];
-    if (selected) selectEmployee(selected);
+    if (!query.trim()) return;
+    const selected = findEmployeeByName(query);
+    if (!selected) {
+      showInvalidEmployeeNameModal();
+      return;
+    }
+    selectEmployee(selected);
   });
 }
 
@@ -463,7 +471,22 @@ function wireRuleNameSearch() {
   });
 
   ruleNameInput.addEventListener("blur", () => {
-    setTimeout(() => closeSuggestions(ruleNameSuggestionsEl), 120);
+    setTimeout(() => {
+      closeSuggestions(ruleNameSuggestionsEl);
+      if (ruleNameInput.value.trim() && !findEmployeeByName(ruleNameInput.value)) {
+        showInvalidEmployeeNameModal();
+      }
+    }, 120);
+  });
+}
+
+function wireRuleFormValidation() {
+  if (!ruleForm || !ruleNameInput) return;
+  ruleForm.addEventListener("submit", (event) => {
+    if (!findEmployeeByName(ruleNameInput.value)) {
+      event.preventDefault();
+      showInvalidEmployeeNameModal();
+    }
   });
 }
 
@@ -698,9 +721,11 @@ function generateRoster() {
 }
 
 fetchEmployees();
+if (copyrightYear) copyrightYear.textContent = new Date().getFullYear();
 renderRosterGrid();
 wireEmployeeSearch();
 wireRuleNameSearch();
+wireRuleFormValidation();
 wireModal();
 wireGenerate(rosterGenerateBtn);
 wireRosterExport(rosterExportBtn);

@@ -1,0 +1,258 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Area51 AI Assistant</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <img class="logo" src="pic/logo.png" alt="Area51 logo">
+      <span class="brand">Area51 AI Assistant</span>
+    </header>
+
+    <main class="page">
+      <section class="chat-shell">
+        <div id="chat" class="chat-window"></div>
+
+        <form id="form" class="chat-form">
+          <label class="visually-hidden" for="input">Your message</label>
+          <div class="input-row">
+            <input id="input" autocomplete="off" placeholder="Ask Area51 anything..." />
+            <button id="send-btn" type="submit">Send</button>
+          </div>
+        </form>
+      </section>
+    </main>
+
+    <script>
+      const supabaseUrl = "https://rhgfzhmessbxoesqkixr.supabase.co";
+      const supabasePublishableKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJoZ2Z6aG1lc3NieG9lc3FraXhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEzNzIzNjYsImV4cCI6MjA3Njk0ODM2Nn0.auo5AOo3iV4j1pZIFYQSBfYUrKOIH8_mz0k4F56VkkY";
+      const area51Endpoint = `${supabaseUrl}/functions/v1/area51-chat`;
+
+      const chat = document.getElementById("chat");
+      const form = document.getElementById("form");
+      const input = document.getElementById("input");
+      const sendBtn = document.getElementById("send-btn");
+      const history = [];
+      let thinkingMessage = null;
+
+      function escapeHtml(text) {
+        return text
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+      }
+
+      function formatInline(text) {
+        return escapeHtml(text)
+          .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+          .replace(/`([^`]+)`/g, "<code>$1</code>")
+          .replace(
+            /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,
+            '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>',
+          );
+      }
+
+      function renderFormattedText(target, text) {
+        const lines = text.split(/\r?\n/);
+        const html = [];
+        let paragraph = [];
+        let listOpen = false;
+
+        function flushParagraph() {
+          if (paragraph.length) {
+            html.push(`<p>${paragraph.join(" ")}</p>`);
+            paragraph = [];
+          }
+        }
+
+        function closeList() {
+          if (listOpen) {
+            html.push("</ul>");
+            listOpen = false;
+          }
+        }
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+
+          if (!trimmed) {
+            flushParagraph();
+            closeList();
+            continue;
+          }
+
+          if (/^-{3,}$/.test(trimmed)) {
+            flushParagraph();
+            closeList();
+            html.push("<hr>");
+            continue;
+          }
+
+          const heading = trimmed.match(/^(#{2,4})\s+(.+)$/);
+          if (heading) {
+            flushParagraph();
+            closeList();
+            const level = Math.min(heading[1].length, 4);
+            html.push(`<h${level}>${formatInline(heading[2])}</h${level}>`);
+            continue;
+          }
+
+          const bullet = trimmed.match(/^[-*]\s+(.+)$/);
+          if (bullet) {
+            flushParagraph();
+            if (!listOpen) {
+              html.push("<ul>");
+              listOpen = true;
+            }
+            html.push(`<li>${formatInline(bullet[1])}</li>`);
+            continue;
+          }
+
+          paragraph.push(formatInline(trimmed));
+        }
+
+        flushParagraph();
+        closeList();
+
+        target.classList.add("bubble-rich");
+        target.innerHTML = html.join("") || formatInline(text);
+      }
+
+      function typeText(target, text, onDone) {
+        target.textContent = "";
+        let i = 0;
+        function step() {
+          target.textContent = text.slice(0, i);
+          i += 1;
+          chat.scrollTop = chat.scrollHeight;
+          if (i <= text.length) {
+            setTimeout(step, 12);
+          } else if (onDone) {
+            onDone();
+          }
+        }
+        step();
+      }
+
+      function createTypingBubble() {
+        const bubble = document.createElement("div");
+        bubble.className = "bubble bubble-typing";
+        bubble.innerHTML = '<span class="dot"></span><span class="dot"></span><span class="dot"></span>';
+        return bubble;
+      }
+
+      function createMessage(text, role, opts = {}) {
+        const row = document.createElement("div");
+        row.className = `message ${role}`;
+
+        const avatar = document.createElement("div");
+        avatar.className = "avatar";
+        if (role === "bot") {
+          const img = document.createElement("img");
+          img.src = "pic/logo.png";
+          img.alt = "Area51 AI logo";
+          avatar.appendChild(img);
+        } else {
+          avatar.textContent = "You";
+        }
+
+        const bubble = opts.typing ? createTypingBubble() : document.createElement("div");
+        if (!opts.typing) bubble.className = "bubble";
+
+        if (opts.animate && role === "bot") {
+          typeText(bubble, text, () => renderFormattedText(bubble, text));
+        } else if (!opts.typing) {
+          if (role === "bot") {
+            renderFormattedText(bubble, text);
+          } else {
+            bubble.textContent = text;
+          }
+        }
+
+        row.appendChild(avatar);
+        row.appendChild(bubble);
+        chat.appendChild(row);
+        chat.scrollTop = chat.scrollHeight;
+        return { row, bubble };
+      }
+
+      function showThinking() {
+        thinkingMessage = createMessage("...", "bot", { typing: true });
+      }
+
+      function clearThinking() {
+        if (thinkingMessage) {
+          thinkingMessage.row.remove();
+          thinkingMessage = null;
+        }
+      }
+
+      function remember(role, content) {
+        history.push({ role, content });
+        if (history.length > 8) {
+          history.splice(0, history.length - 8);
+        }
+      }
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const text = input.value.trim();
+        if (!text) return;
+
+        createMessage(text, "user");
+        input.value = "";
+        input.focus();
+        sendBtn.disabled = true;
+        showThinking();
+
+        try {
+          const res = await fetch(area51Endpoint, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${supabasePublishableKey}`,
+              "apikey": supabasePublishableKey,
+            },
+            body: JSON.stringify({
+              message: text,
+              history,
+            }),
+          });
+
+          const data = await res.json().catch(() => ({}));
+
+          if (!res.ok) {
+            if (data.error) {
+              throw new Error(data.error);
+            }
+
+            if (res.status === 504 || res.status === 546) {
+              throw new Error("Supabase ended the request before the AI finished. Please try again.");
+            }
+
+            throw new Error(`Request failed with status ${res.status}`);
+          }
+
+          const reply = data.message || "I don't have a response for that yet.";
+          clearThinking();
+          createMessage(reply, "bot", { animate: true });
+          remember("user", text);
+          remember("assistant", reply);
+        } catch (err) {
+          clearThinking();
+          createMessage(err instanceof Error ? err.message : "Error talking to the API.", "bot");
+          console.error(err);
+        } finally {
+          sendBtn.disabled = false;
+        }
+      });
+
+      createMessage("Hi, I'm Area51 AI robot, how can I help you?", "bot", { animate: true });
+    </script>
+    <div class="copyright">© Mian</div>
+  </body>
+</html>

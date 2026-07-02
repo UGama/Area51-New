@@ -1,101 +1,202 @@
-Area51 Overview:
-Indoor Playgrounds in Australia | Party Venue | Sports Centre
+# Area 51 World — AI Assistant Knowledge
 
-Location details:
-e stars and your space suits ready… the next Area 51 could be landing near you!
-Underwood Info
-CENTRE SIZE
-10,000 sqm
-Including the Alien Night Market
-OPERATING HOURS
-Play Area
-9am – 9pm Daily
-Cafe
-9am – 8pm Daily
-ADDRESS
-51 Kingston Road, Underwood
-Queensland, 4119, Australia
-Mt Gravatt Info
-CENTRE SIZE
-2,000 sqm
-OPERATING HOURS
-Play Area
-9am – 9pm Daily
-Cafe
-9am – 8:30pm Daily
-* For Kids up to 12 years old
-ADDRESS
-2nd Floor, Westfield – Mt Gravatt
-Kessels Rd, Upper Mount Gravatt
-Queensland, 4122, Australia
-Redcliffe Info
-CENTRE SIZE
-1,000 sqm
-OPERATING HOURS
-Play Area
-9am – 5pm Sunday to Thursday
-9am – 7pm Friday and Saturday
-Cafe
-9am – 4.30pm Sunday to Thursday
-9am – 6.30pm Friday and Saturday
-* For Kids up to 12 years old
-ADDRESS
-82-98 Anzac Ave, Redcliffe
-Queensland, 4020, Australia
-Helensvale Info
-CENTRE SIZE
-1,500 sqm
-OPERATING HOURS
-Play Area
-9am – 9pm Daily
-Cafe
-9am – 8:30pm Daily
-* For Kids up to 12 years old
-ADDRESS
-Westfield – Helensvale
-1-29 Millaroo Dr, Helensvale
-Queensland, 4212, Australia
-Launch into Fun
-Play. Party. Refuel. Discover the star-powered services waiting at your base.
-PLAY
-Blast off into action with age-specific areas designed for nonstop fun.
-PARTY
-Celebrate with 90 mins of play, a private party room, and tasty kids’ meals!
-REFUEL
-Pizza, burgers, light bites, and drinks — the perfect fuel for hungry explorers!
-ADULTS ONLY NIGHT
-Cosmic Captures
-Choose your Area 51 location to browse stellar photos.
-HELENSVALE
-MT GRAVATT
-REDCLIFFE
-UNDERWOOD
-HQ Hotline
-07 4351 5151
-Our phones are often busy the best way to check availability or to book a party or general tickets is online.
-Have a question? Drop us an e-mail.
-We have staff monitoring emails:
-9am to 9pm, Daily for General Inquiries
-askus@area51world.com.au
-9am to 5pm, Monday to Friday for
-Parties
-Useful Links
-Locations
-Job Opportunities
-Sponsorship Request
-Refund Policy
-Terms and Conditions
-Follow Us
-Follow
-Follow
-Follow
-Follow
-Follow
-Follow
-Follow
-Like to stay updated?
-Success!
-Name
-Email
-SUBSCRIBE
-© Copyright 2025
+This file contains the important, public-facing Area 51 World facts that the chatbot may use.
+Always treat volatile prices, hours, promotions and availability as a snapshot and direct users to the live website or booking page for confirmation.
+
+## Core guidance
+- Answer only using Area 51 World public information and the linked official Gizmo Courts details.
+- Prefer location-specific pages over summary/hub pages.
+- If the notes do not contain a definitive answer, reply that you do not know based on the knowledge available.
+- Do not invent availability, refunds, membership terms, or health clearance.
+- For conflicting or uncertain details, recommend checking the live website or contacting the venue.
+
+## Company summary
+Area 51 World operates indoor family entertainment centres in Queensland and New South Wales.
+Public offerings include age-zoned play, soft play, slides, trampolines, climbing, ropes, toddler zones, cafés, birthday parties, school/group bookings, gift cards, selected adult-only sessions, selected VR experiences and selected snow attractions.
+
+HQ contact
+- Phone: 07 4351 5151
+- Email: askus@area51world.com.au
+- General enquiries: 9:00 am–9:00 pm daily
+- Party enquiries: 9:00 am–5:00 pm Monday to Friday
+
+Booking basics
+- Online booking is strongly recommended; walk-ins may be accepted but not guaranteed.
+- Grip socks are mandatory on play equipment. Area 51 socks are required and previously purchased socks may be reused.
+- A waiver is required for every participant.
+- Guests should arrive about 15 minutes before booked sessions.
+- Children must not be left unattended.
+- Adults supervising ages 5–12 must have their own ticket if they participate on equipment.
+- Outside food is generally prohibited. Refillable water bottles and nut-free birthday cakes are usually permitted with venue approval.
+- Only nut-free cakes are allowed; cakeage fees may apply.
+- Venues are wheelchair accessible and a carer may enter free with a valid Companion Card.
+- Smoking and vaping are prohibited.
+
+Safety and restrictions
+- Staff enforce attraction-specific rules; participants must follow instructions.
+- Remove glasses, jewellery and loose objects where instructed.
+- No rough play, racing, diving, flips, sharp objects, food or drink on equipment.
+- People with injuries, heart/respiratory conditions, pregnancy, sprains or broken bones may be excluded from some attractions.
+- Many attractions use age, height and weight limits.
+
+## Venue directory
+
+### Underwood
+Address: 51 Kingston Road, Underwood, QLD 4119
+Play hours: 9:00 am–9:00 pm daily
+Café hours: 9:00 am–8:00 pm daily
+Main attractions:
+- Astrotot Playland, Rocket Inflatable, Galacticity, Gizmo’s Galaxy
+- Trampoline Park (max 112 kg)
+- Space Shuttle Inflatable (ages 5–12, max 91 kg, no adults)
+- Volcano (ages 5–12, min 100 cm)
+- Climbing Arena (ages 5+, min 100 cm, 18–113 kg)
+- Leap of Faith (ages 5+, min 120 cm, 20–90 kg)
+- High Ropes (ages 5+, max 113 kg; 110–120 cm may require adult helper)
+- Space Ninja, Adult Ninja, Mega Slides, Galactic Step
+- Snow House (-5°C snow room), Astro Alley mini bowling
+- VR attractions and Gizmo Courts padel/pickleball
+
+### Mt Gravatt
+Address: 2nd Floor, Westfield Mt Gravatt, Kessels Road, Upper Mount Gravatt, QLD 4122
+Play hours: 9:00 am–9:00 pm daily (confirm live due to variation)
+Café hours: 9:00 am–8:30 pm daily
+Main attractions:
+- Gizmo’s Odyssey multi-level soft play
+- Interactive basketball and soccer games
+- Super Climber (min 122 cm)
+- Trampolines, Astro Explorer toddler zone, eight slides, Galactic Step
+
+### Redcliffe
+Address: 82–98 Anzac Avenue, Redcliffe, QLD 4020
+Play hours: 9:00 am–7:00 pm Fri–Sat and Sunday; 9:00 am–5:00 pm Mon–Thu (confirm live)
+Café hours: 9:00 am–8:30 pm Fri–Sat and Sunday; 9:00 am–6:00 pm Mon–Thu (confirm live)
+Main attractions:
+- Gizmo’s Odyssey soft play
+- Super Climber (min 122 cm)
+- Astro Explorer toddler area, slides
+
+### Helensvale
+Address: Westfield Helensvale, Millaroo Drive, Helensvale, QLD 4212
+Play hours: 9:00 am–9:00 pm daily (confirm live due to variation)
+Café hours: 9:00 am–8:30 pm daily
+Main attractions:
+- Gizmo’s Odyssey multi-storey soft play
+- Super Climber, Astro Explorer/toddler zone, slides, climbing features
+
+### Ipswich
+Address: 101 Hume Drive, Bundamba, QLD 4304
+Play hours: 9:00 am–9:00 pm daily
+Café hours: 9:00 am–8:00 pm daily
+Main attractions:
+- Toddler Zone (ages 4 and under), Gizmo’s Galaxy, slides, ninja course
+- Super Climber (min 122 cm), Sports Court
+- Snow World (ages 3+, parent supervision for ages 3–4; enclosed shoes required)
+- High Ropes (ages 7+, min 122 cm, max 85 kg)
+- Climbing Walls (ages 5+, min 108 cm, 18 kg, max 130 kg)
+- Adults Only events
+
+### Castle Hill
+Address: 16–18 Victoria Avenue / Showground Road, Castle Hill, NSW 2154
+Play hours: 9:00 am–9:00 pm daily
+Café hours: 9:00 am–8:30 pm daily
+Main attractions:
+- Gizmo’s Odyssey soft play, Super Climber, Astro Explorer toddler zone, slides
+- Trampoline and dodgeball, Snow World (-5°C), Dragon Rider VR, Combat VR
+
+### Strathpine
+- Mentioned in navigation but not confirmed as a complete public venue page; treat as unconfirmed and verify live before giving details.
+
+## Ticketing and pricing notes
+- Prices and session lengths vary by venue, day type and age.
+- Prices are a snapshot and should be verified at checkout.
+- Underwood, Helensvale, Mt Gravatt, Redcliffe, Ipswich, Castle Hill and Strathpine may have different ticket categories for toddlers, kids, older kids, Power Play and adults.
+- Infant tickets (0–11 months) are often free with another paying guest; otherwise a low infant ticket may apply.
+- Power Play, Adults Only, VIP/The Lot and multi-hour sessions are special products with additional restrictions and inclusions.
+
+## Party bookings
+- Birthday parties include a private party room, party host, play time, tableware, wristbands, socks and a food pack.
+- Typical packages: Classic, Ultimate, Deluxe.
+- Venue party minimums are usually 10 guests; capacity and package details vary by location.
+- Party deposits are non-refundable; payments are generally non-refundable.
+- Parties may require final guest numbers and payment several days before the event.
+- No-show guests are typically forfeited.
+- Parents should arrive about 30 minutes early for party setup and 15 minutes early for general bookings.
+- Only nut-free cakes, candles, weighted balloons and party bags are generally allowed.
+
+## Group bookings and school events
+- Group bookings generally start at 20 guests.
+- Group offers may require 50% deposit and full payment several days before the visit.
+- Add-ons and changes often close days before the event.
+- Group bookings are usually not refundable within seven days.
+
+## Gizmo Courts (Underwood)
+Address: 51 Kingston Road, Underwood, QLD 4119
+- Open daily 9:00 am–8:00 pm.
+- Offers padel and pickleball court hire.
+- Pickleball: 30 min from $12 weekdays, 1 hour from $20 weekdays.
+- Padel: 1 hour from $45 weekdays.
+- Paddle hire: $10 plus $20 refundable deposit.
+- Phone: 07 4351 5151.
+
+## Café summary
+- Most locations offer coffee, hot drinks, smoothies, shakes, pizzas, burgers, kids meals and snacks.
+- Underwood has a larger café offering and may have additional food outlets.
+- Prices are indicative and should be confirmed live.
+
+## Promotions and warnings
+- Time-sensitive deals, event dates, discount codes and giveaways are not evergreen.
+- Always check the live booking page for availability, pricing and current promotions.
+- If information is dated or uncertain, tell users it is a snapshot and refer them to the website.
+
+## Safety rules summary
+- Socks are mandatory on play equipment; enclosed shoes are required for Snow World and Astro Alley.
+- Height and weight limits apply to specific attractions.
+- Underwood:
+  - High Ropes: max 113 kg; 120 cm minimum alone; 110–120 cm may need an adult helper.
+  - Leap of Faith: min 120 cm, 20–90 kg.
+  - Climbing Arena: min 100 cm, 18–113 kg.
+  - Trampoline Park: max 112 kg.
+  - Space Shuttle: ages 5–12, max 91 kg, no adults.
+  - Volcano: ages 5–12, min 100 cm, no adults.
+- Ipswich:
+  - High Ropes: min 122 cm, max 85 kg.
+  - Climbing Walls: min 108 cm, 18 kg, max 130 kg.
+- No participation with casts may be allowed.
+
+## Refunds, cancellations and rescheduling
+- Most bookings are non-refundable.
+- Changes within 24 hours may result in forfeiture.
+- Party cancellations within seven days usually incur a fee and are not refundable.
+- Party rescheduling with more than seven days’ notice may be allowed.
+- Requests typically must be made in writing.
+
+## Known conflicts and uncertain details
+- Mt Gravatt hours may vary between hub and venue pages.
+- Helensvale hours may vary between hub and venue pages.
+- Redcliffe hours may vary between hub and venue pages.
+- Underwood High Ropes height rules may differ by source; include the conditional 110–120 cm rule with adult helper.
+- Castle Hill group pricing may show inconsistent weekend/holiday rows.
+
+## Privacy and account notes
+- Booking accounts allow ticket management, waivers and gift voucher redemption.
+- Booking date/time may be changed up to 24 hours before the visit.
+- Personal information is not part of this knowledge file.
+
+## Memberships
+- Memberships may vary by location and are often subject to minimum terms.
+- Family memberships require a minimum number of members.
+- Early cancellation requires notice and may incur fees.
+- VIP and other memberships may include unlimited visits, socks and discounts.
+- Membership products are volatile and should be verified on the live site.
+
+## Gift cards
+- Gift cards are location-specific and redeemable at the purchase venue.
+- Digital vouchers can be partially redeemed until the balance reaches zero.
+- They may cover tickets, parties and café items but not always special offers.
+
+## Important source advice
+- Use the live website booking page for real-time availability, prices and opening hours.
+- Do not treat promotions, event dates or special offers as permanent.
+- Direct customers to confirm details on the official Area 51 World website.
+

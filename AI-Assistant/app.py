@@ -34,17 +34,11 @@ NOTES:
 OLLAMA_URL = "http://localhost:11434/api/chat"
 MODEL_NAME = "llama3.2"   # you can change to llama3:8b later if your Mac is comfy
 
-@app.post("/chat")
-def chat():
-    data = request.get_json()
-    user_message = data.get("message", "").strip()
-
+def create_chat_response(user_message: str) -> dict:
     if not user_message:
-        return jsonify({"reply": "Please type a message."})
+        return {"reply": "Please type a message."}
 
-    # NEW: pick relevant notes for this specific question
     relevant_notes = get_relevant_notes(user_message, NOTES, max_chars=5000)
-
     system_prompt = SYSTEM_PROMPT_TEMPLATE.format(NOTES=relevant_notes)
 
     payload = {
@@ -62,8 +56,14 @@ def chat():
     r = requests.post(OLLAMA_URL, json=payload)
     r.raise_for_status()
     reply = r.json()["message"]["content"]
+    return {"reply": reply}
 
-    return jsonify({"reply": reply})
+@app.post("/chat")
+@app.post("/api/chat")
+def chat():
+    data = request.get_json()
+    user_message = data.get("message", "").strip()
+    return jsonify(create_chat_response(user_message))
 
 def get_relevant_notes(question: str, notes: str, max_chars: int = 5000) -> str:
     """

@@ -1,0 +1,25 @@
+{
+  "company": "Area 51 World",
+  "checked_at": "2026-07-02",
+  "primary_domain": "https://www.area51world.com.au",
+  "venues_included": [
+    "Underwood",
+    "Mt Gravatt",
+    "Redcliffe",
+    "Helensvale",
+    "Ipswich",
+    "Castle Hill"
+  ],
+  "linked_subsites_included": [
+    "https://www.gizmocourts.com/"
+  ],
+  "fact_count": 291,
+  "source_count": 65,
+  "sha256": {
+    "area51_knowledge_base.md": "ea507cd3b6ac2a9675824734bbb191f39ebf3bce0fb1161eea4f94136232ccaf",
+    "area51_facts.jsonl": "2507e8e0393fc4665f6121614838cb9a812fd1fa366d011366b899837497b6c2",
+    "area51_source_manifest.csv": "5e7e1e24813691859080e485f7ecaad92c56be00ef26f43c3778c1bb3e368eb0",
+    "area51_conflicts_and_review.json": "ae5ace9250cf1dab46662ffd8818afff43375ea6083569b0fc0291883a99eef7",
+    "README.txt": "6da64cd2a5cdada7717e255c40139b16bc096a4b11ce0ee9ea542be5ec95bb57"
+  }
+}

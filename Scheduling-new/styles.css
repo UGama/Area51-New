@@ -346,11 +346,11 @@ body { background: #f6f4fb; color: #1f1630; }
 
 
 .roster-section {
-  margin: 0px 14px 40px;
+  margin: 0 14px 56px;
   background: #fff;
   border-radius: 14px;
   box-shadow: var(--card-shadow);
-  padding: 14px 14px 16px;
+  padding: 14px 14px 12px;
 }
 .roster-head {
   margin: 16px 0 24px;
@@ -381,8 +381,7 @@ body { background: #f6f4fb; color: #1f1630; }
 .roster-export {
   display: flex;
   justify-content: flex-end;
-  margin: -24px 14px 40px;
-  padding-right: 14px;
+  margin-top: 8px;
 }
 .roster-export button {
   border: none;
@@ -390,8 +389,8 @@ body { background: #f6f4fb; color: #1f1630; }
   background: var(--brand);
   color: #fff;
   font-weight: 700;
-  font-size: 15px;
-  padding: 10px 18px;
+  font-size: 16px;
+  padding: 12px 24px;
   cursor: pointer;
   box-shadow: 0 6px 14px rgba(78,42,108,.18);
 }
@@ -406,7 +405,6 @@ body { background: #f6f4fb; color: #1f1630; }
   border-radius: 12px;
   overflow: hidden;
   background: #f5f1ff;
-  margin-bottom: 24px;
 }
 .roster-header {
   padding: 6px 8px;

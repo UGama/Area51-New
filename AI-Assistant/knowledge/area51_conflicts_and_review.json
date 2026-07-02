@@ -1,0 +1,45 @@
+{
+  "checked_at": "2026-07-02",
+  "priority_rule": [
+    "Use venue-specific pages before hub pages.",
+    "Use live checkout for availability and current prices.",
+    "Escalate unresolved contradictions to staff."
+  ],
+  "conflicts": [
+    {
+      "topic": "Mt Gravatt operating hours",
+      "detail": "The venue cafe page states play 9am–9pm daily, while the activities hub has shown 9am–7pm Sun–Wed and 9am–9pm Thu–Sat.",
+      "recommended_handling": "Use the venue-specific page or live booking page as the higher-priority source and ask customers to confirm for a particular date."
+    },
+    {
+      "topic": "Helensvale operating hours",
+      "detail": "The venue cafe page states play 9am–9pm daily, while the activities hub has shown 9am–7pm Sun–Thu and 9am–9pm Fri–Sat.",
+      "recommended_handling": "Use the venue-specific page or live booking page and verify date-specific hours."
+    },
+    {
+      "topic": "Redcliffe operating hours",
+      "detail": "A hub summary has shown shorter hours than the Redcliffe-specific cafe page.",
+      "recommended_handling": "Prefer the Redcliffe-specific page; confirm public-holiday and special-event hours."
+    },
+    {
+      "topic": "Underwood High Ropes minimum height",
+      "detail": "Some venue copy states 120 cm minimum, while the safety policy allows 110–120 cm with an adult helper aged 18+.",
+      "recommended_handling": "Answer with the full conditional rule and advise checking staff eligibility at booking."
+    },
+    {
+      "topic": "Group-booking deposit deadline",
+      "detail": "Group pages show both '5 business days after booking' and 'within 7 days' for the 50% deposit.",
+      "recommended_handling": "Do not state one as definitive; direct the customer to the invoice or Groups team."
+    },
+    {
+      "topic": "Castle Hill group price for ages 1–2",
+      "detail": "The page shows $13 and $18 in separate weekend/holiday rows without a clear duration on one row.",
+      "recommended_handling": "Mark as ambiguous and verify at checkout."
+    },
+    {
+      "topic": "Events and promotions",
+      "detail": "What's On, Adults Only dates, giveaways, discount codes and ticket discounts change quickly and may remain indexed after expiry.",
+      "recommended_handling": "Do not treat as evergreen. Check the live page and current date before answering."
+    }
+  ]
+}
