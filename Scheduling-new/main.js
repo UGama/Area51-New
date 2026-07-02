@@ -25,6 +25,10 @@ const rulesListEl = document.getElementById("rules-list");
 const rosterGrid = document.getElementById("roster-grid");
 const copyrightYear = document.getElementById("copyright-year");
 const rosterGenerateBtn = document.getElementById("roster-generate-btn");
+const rosterExportBtn = document.getElementById("roster-export-btn");
+const appModal = document.getElementById("app-modal");
+const appModalMessage = document.getElementById("app-modal-message");
+const appModalClose = document.getElementById("app-modal-close");
 
 let employees = [];
 let currentDetail = null;
@@ -220,9 +224,9 @@ function renderShiftAssignments(block, assigned) {
   const groups = assigned.reduce((acc, item) => {
     const key = normalizeText(item.position) || "other";
     if (!acc.has(key)) {
-      acc.set(key, { position: item.position || "other", names: [] });
+      acc.set(key, { position: item.position || "other", assignments: [] });
     }
-    acc.get(key).names.push(item.name);
+    acc.get(key).assignments.push(item);
     return acc;
   }, new Map());
 
@@ -246,10 +250,10 @@ function renderShiftAssignments(block, assigned) {
 
     const names = document.createElement("ul");
     names.className = "roster-position__names";
-    group.names.forEach((person) => {
+    group.assignments.forEach((assignment) => {
       const name = document.createElement("li");
       name.className = "roster-position__name";
-      name.textContent = person;
+      renderRosterNameDisplay(name, assignment, group.position);
       names.appendChild(name);
     });
 
@@ -257,6 +261,88 @@ function renderShiftAssignments(block, assigned) {
     row.appendChild(names);
     block.appendChild(row);
   });
+}
+
+function renderRosterNameDisplay(container, assignment, position) {
+  container.innerHTML = "";
+
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "roster-position__name-button";
+  button.textContent = assignment.name || "Unfilled";
+  button.addEventListener("click", () => {
+    renderRosterNameEditor(container, assignment, position);
+  });
+
+  container.appendChild(button);
+}
+
+function renderRosterNameEditor(container, assignment, position) {
+  container.innerHTML = "";
+  const originalName = assignment.name || "Unfilled";
+
+  const editor = document.createElement("div");
+  editor.className = "roster-position__name-editor";
+
+  const input = document.createElement("input");
+  input.className = "roster-position__name-input";
+  input.type = "text";
+  input.value = assignment.name || "";
+  input.setAttribute("aria-label", `${position} employee name`);
+
+  const suggestions = document.createElement("ul");
+  suggestions.className = "suggestions roster-position__suggestions";
+  let editorClosed = false;
+
+  const closeEditor = (value, validateName = true) => {
+    editorClosed = true;
+    if (validateName) {
+      const employee = findEmployeeByName(value);
+      if (!employee) {
+        showModal("Please choose a valid employee name from the suggestions.");
+        assignment.name = originalName;
+        renderRosterNameDisplay(container, assignment, position);
+        return;
+      }
+      assignment.name = employee.name || originalName;
+    } else {
+      assignment.name = value || originalName;
+    }
+    renderRosterNameDisplay(container, assignment, position);
+  };
+
+  const saveName = () => {
+    closeEditor(input.value.trim());
+  };
+
+  input.addEventListener("input", () => {
+    renderNameSuggestions(input.value, suggestions, (row) => {
+      closeEditor(row?.name || originalName, false);
+    });
+  });
+
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      saveName();
+    }
+    if (event.key === "Escape") {
+      editorClosed = true;
+      renderRosterNameDisplay(container, assignment, position);
+    }
+  });
+
+  input.addEventListener("blur", () => {
+    setTimeout(() => {
+      if (!editorClosed) saveName();
+    }, 120);
+  });
+
+  editor.appendChild(input);
+  editor.appendChild(suggestions);
+  container.appendChild(editor);
+  input.focus();
+  input.select();
 }
 
 function renderDetail(row) {
@@ -281,6 +367,12 @@ function matchingEmployees(query) {
   return employees
     .filter((emp) => normalizeText(emp.name).includes(normalized))
     .slice(0, 8);
+}
+
+function findEmployeeByName(name) {
+  const normalized = normalizeText(name);
+  if (!normalized) return null;
+  return employees.find((emp) => normalizeText(emp.name) === normalized) || null;
 }
 
 function closeSuggestions(listEl = suggestionsEl) {
@@ -405,6 +497,72 @@ const wireGenerate = (btn) => {
       renderRosterGrid(assignments);
     });
   }
+};
+
+function showModal(message) {
+  if (!appModal) {
+    alert(message);
+    return;
+  }
+  if (appModalMessage) appModalMessage.textContent = message;
+  appModal.hidden = false;
+  appModalClose?.focus();
+}
+
+function closeModal() {
+  if (appModal) appModal.hidden = true;
+}
+
+function wireModal() {
+  appModalClose?.addEventListener("click", closeModal);
+  appModal?.addEventListener("click", (event) => {
+    if (event.target === appModal) closeModal();
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && appModal && !appModal.hidden) closeModal();
+  });
+}
+
+const wireRosterExport = (btn) => {
+  if (!btn) return;
+  btn.addEventListener("click", async () => {
+    const section = document.querySelector(".roster-section");
+    if (!section) return;
+    if (!rosterGrid?.querySelector(".roster-block")) {
+      showModal("Please generate the roster before exporting.");
+      return;
+    }
+    if (typeof html2canvas === "undefined") {
+      alert("Export library is still loading. Please try again in a moment.");
+      return;
+    }
+
+    const active = document.activeElement;
+    if (active && typeof active.blur === "function") active.blur();
+
+    btn.disabled = true;
+    const originalText = btn.textContent;
+    btn.textContent = "Exporting...";
+
+    try {
+      const canvas = await html2canvas(section, {
+        backgroundColor: "#ffffff",
+        scale: window.devicePixelRatio || 2,
+        useCORS: true,
+      });
+      const link = document.createElement("a");
+      const date = new Date().toISOString().slice(0, 10);
+      link.download = `weekly-roster-${date}.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+    } catch (err) {
+      console.error("Roster export failed", err);
+      alert("Could not export the roster image. Please try again.");
+    } finally {
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
+  });
 };
 
 function normalizeText(value) {
@@ -543,4 +701,6 @@ fetchEmployees();
 renderRosterGrid();
 wireEmployeeSearch();
 wireRuleNameSearch();
+wireModal();
 wireGenerate(rosterGenerateBtn);
+wireRosterExport(rosterExportBtn);
