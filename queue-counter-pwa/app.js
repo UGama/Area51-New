@@ -83,7 +83,6 @@ function resizeStageToVideo() {
   overlay.width = video.videoWidth;
   overlay.height = video.videoHeight;
   stage.style.aspectRatio = `${video.videoWidth} / ${video.videoHeight}`;
-  stage.style.minHeight = "0";
   redraw();
 }
 

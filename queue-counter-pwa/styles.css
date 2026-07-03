@@ -138,7 +138,13 @@ h2 {
 }
 
 .stage.camera-off {
-  touch-action: pan-y;
+  touch-action: auto;
+}
+
+.stage.camera-off canvas,
+.stage.camera-off video {
+  pointer-events: none;
+  touch-action: auto;
 }
 
 video,
