@@ -14,14 +14,6 @@
 
     <main class="page">
       <section class="chat-shell">
-        <form id="endpoint-form" class="endpoint-form">
-          <label for="endpoint">Cloudflare Worker endpoint</label>
-          <div class="input-row">
-            <input id="endpoint" autocomplete="off" placeholder="http://localhost:8787/chat" />
-            <button type="submit">Save</button>
-          </div>
-        </form>
-
         <div id="chat" class="chat-window"></div>
 
         <form id="form" class="chat-form">
@@ -35,23 +27,14 @@
     </main>
 
     <script>
-      const endpointStorageKey = "area51CloudflareEndpoint";
-      const defaultEndpoint = "http://localhost:8787/chat";
+      const cloudflareEndpoint = "http://localhost:8787/chat";
 
-      const endpointForm = document.getElementById("endpoint-form");
-      const endpointInput = document.getElementById("endpoint");
       const chat = document.getElementById("chat");
       const form = document.getElementById("form");
       const input = document.getElementById("input");
       const sendBtn = document.getElementById("send-btn");
       const history = [];
       let thinkingMessage = null;
-
-      const urlEndpoint = new URLSearchParams(window.location.search).get("endpoint");
-      endpointInput.value = urlEndpoint || localStorage.getItem(endpointStorageKey) || defaultEndpoint;
-      if (urlEndpoint) {
-        localStorage.setItem(endpointStorageKey, urlEndpoint);
-      }
 
       function escapeHtml(text) {
         return text
@@ -196,11 +179,6 @@
         }
       }
 
-      function endpointUrl() {
-        const value = endpointInput.value.trim() || defaultEndpoint;
-        return value.endsWith("/chat") ? value : `${value.replace(/\/+$/, "")}/chat`;
-      }
-
       function cloudFetchErrorMessage(endpoint, err) {
         const reason = err instanceof Error ? err.message : "Failed to fetch";
         const checks = [
@@ -262,10 +240,18 @@
         }).join("");
       }
 
-      async function readCloudflareResponse(res, bubble) {
+      function cleanCloudflareReply(text) {
+        return text
+          .replace(/\r\n/g, "\n")
+          .replace(/[ \t]+\n/g, "\n")
+          .replace(/\n{3,}/g, "\n\n")
+          .trim();
+      }
+
+      async function readCloudflareResponse(res) {
         if (!res.body) {
           const data = await res.json().catch(() => ({}));
-          return data.message || data.reply || data.error || "";
+          return cleanCloudflareReply(data.message || data.reply || data.error || "");
         }
 
         const reader = res.body.getReader();
@@ -282,27 +268,14 @@
             ? parseStreamChunk(raw, state)
             : raw;
 
-          if (next) {
-            reply += next;
-            bubble.textContent = reply;
-            chat.scrollTop = chat.scrollHeight;
-          }
+          if (next) reply += next;
         }
 
         const tail = parseStreamChunk("\n\n", state);
-        if (tail) {
-          reply += tail;
-          bubble.textContent = reply;
-        }
+        if (tail) reply += tail;
 
-        return reply.trim();
+        return cleanCloudflareReply(reply);
       }
-
-      endpointForm.addEventListener("submit", (e) => {
-        e.preventDefault();
-        localStorage.setItem(endpointStorageKey, endpointUrl());
-        createMessage("Cloudflare endpoint saved.", "bot");
-      });
 
       form.addEventListener("submit", async (e) => {
         e.preventDefault();
@@ -316,8 +289,7 @@
         showThinking();
 
         try {
-          const endpoint = endpointUrl();
-          const res = await fetch(endpoint, {
+          const res = await fetch(cloudflareEndpoint, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -331,15 +303,14 @@
             throw new Error(data.error || `Cloudflare request failed with status ${res.status}`);
           }
 
+          const reply = await readCloudflareResponse(res);
           clearThinking();
-          const { bubble } = createMessage("", "bot");
-          const reply = await readCloudflareResponse(res, bubble);
-          renderFormattedText(bubble, reply || "I don't have a response for that yet.");
+          createMessage(reply || "I don't have a response for that yet.", "bot");
           remember("user", text);
           remember("assistant", reply);
         } catch (err) {
           clearThinking();
-          createMessage(cloudFetchErrorMessage(endpointUrl(), err), "bot");
+          createMessage(cloudFetchErrorMessage(cloudflareEndpoint, err), "bot");
           console.error(err);
         } finally {
           sendBtn.disabled = false;

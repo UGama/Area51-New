@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#101827" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Queue Counter" />
+  <title>Queue Counter</title>
+
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="./icons/icon-180.png" />
+  <link rel="icon" href="./icons/icon-192.png" />
+  <link rel="stylesheet" href="./styles.css" />
+
+  <script defer src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js"></script>
+  <script defer src="./app.js"></script>
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">ON-DEVICE PERSON DETECTION</p>
+        <h1>Queue Counter</h1>
+      </div>
+      <div class="count-card" aria-live="polite">
+        <span id="count">0</span>
+        <small>in queue</small>
+      </div>
+    </header>
+
+    <section class="camera-card">
+      <div id="stage" class="stage">
+        <video id="video" playsinline muted aria-label="Live camera"></video>
+        <canvas id="overlay" aria-label="Detection overlay and queue zone"></canvas>
+        <div id="emptyState" class="empty-state">
+          <strong>Camera is off</strong>
+          <span>Tap Start camera, then drag on the image to mark the queue area.</span>
+        </div>
+      </div>
+
+      <div class="status-row">
+        <span id="statusDot" class="status-dot"></span>
+        <span id="status">Ready</span>
+        <span id="fps" class="performance"></span>
+      </div>
+    </section>
+
+    <section class="controls" aria-label="Camera controls">
+      <button id="startBtn" class="primary">Start camera</button>
+      <button id="stopBtn" disabled>Stop</button>
+      <button id="switchBtn" disabled>Switch camera</button>
+      <button id="clearZoneBtn" disabled>Clear zone</button>
+    </section>
+
+    <section class="settings-card">
+      <label for="confidence">
+        Detection confidence
+        <output id="confidenceValue">55%</output>
+      </label>
+      <input id="confidence" type="range" min="30" max="90" step="5" value="55" />
+
+      <label class="toggle-row">
+        <input id="wholeFrame" type="checkbox" />
+        <span>Count the whole camera image instead of a queue zone</span>
+      </label>
+    </section>
+
+    <section class="reading-card">
+      <div>
+        <h2>Readings</h2>
+        <p>Save a manual count with the current date and time.</p>
+      </div>
+      <div class="reading-actions">
+        <button id="saveReadingBtn" disabled>Save reading</button>
+        <button id="exportBtn">Export CSV</button>
+        <button id="clearReadingsBtn" class="danger-text">Clear</button>
+      </div>
+      <p id="readingSummary" class="reading-summary">No saved readings.</p>
+    </section>
+
+    <details class="help-card">
+      <summary>How to use</summary>
+      <ol>
+        <li>Place the iPhone or iPad where it can see the queue.</li>
+        <li>Tap <strong>Start camera</strong> and allow camera access.</li>
+        <li>Drag on the camera image to draw a green queue zone.</li>
+        <li>People whose box centre is inside the zone are counted.</li>
+      </ol>
+      <p>For best results, keep the device fixed, avoid backlighting, and frame people from at least waist height.</p>
+    </details>
+
+    <footer>
+      Video stays on this device. This app does not upload or store camera footage.
+    </footer>
+  </main>
+</body>
+</html>
