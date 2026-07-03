@@ -1,4 +1,4 @@
-const CACHE_NAME = "queue-counter-v4";
+const CACHE_NAME = "queue-counter-v2";
 const APP_SHELL = [
   "./",
   "./index.html",

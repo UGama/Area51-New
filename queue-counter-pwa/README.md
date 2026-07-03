@@ -57,3 +57,10 @@ Inference runs in the browser. This project does not upload camera video or save
 ## Important limitation
 
 This version gives a **current visible queue count**. It is not an entry/exit counter and does not track unique people crossing a line. For that feature, add a multi-object tracker and line-crossing logic.
+
+
+## Version 2 fixes
+
+- The camera area no longer blocks vertical page scrolling while the camera is off.
+- The “Camera is off” overlay now reliably disappears when the camera starts.
+- The service-worker cache version was increased so deployed updates can replace old files.

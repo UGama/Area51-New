@@ -37,11 +37,8 @@ let inferenceTimer = null;
 let queueZone = null;
 let drawingStart = null;
 let drawingNow = null;
-let zoneDrag = null;
 
 const READING_KEY = "queue-counter-readings-v1";
-const MIN_ZONE_SIZE = 0.03;
-const HANDLE_RADIUS = 0.06;
 
 function setStatus(message, type = "idle") {
   statusEl.textContent = message;
@@ -73,16 +70,13 @@ function setControls(isRunning) {
   saveReadingBtn.disabled = !isRunning;
 }
 
-function setCameraUiActive(isActive) {
-  stage.classList.toggle("camera-off", !isActive);
-}
-
 function resizeStageToVideo() {
   if (!video.videoWidth || !video.videoHeight) return;
 
   overlay.width = video.videoWidth;
   overlay.height = video.videoHeight;
   stage.style.aspectRatio = `${video.videoWidth} / ${video.videoHeight}`;
+  stage.style.minHeight = "0";
   redraw();
 }
 
@@ -131,8 +125,8 @@ async function startCamera() {
     }
 
     resizeStageToVideo();
+    stage.classList.add("camera-on");
     emptyState.hidden = true;
-    setCameraUiActive(true);
 
     await loadDetector();
 
@@ -143,10 +137,10 @@ async function startCamera() {
   } catch (error) {
     console.error(error);
     running = false;
+    stage.classList.remove("camera-on");
     stopTracks();
     setControls(false);
     emptyState.hidden = false;
-    setCameraUiActive(false);
     setStatus(readableCameraError(error), "error");
   }
 }
@@ -168,6 +162,7 @@ function stopCamera() {
   running = false;
   clearTimeout(inferenceTimer);
   inferenceTimer = null;
+  stage.classList.remove("camera-on");
   stopTracks();
   lastPredictions = [];
   currentCount = 0;
@@ -175,7 +170,6 @@ function stopCamera() {
   fpsEl.textContent = "";
   ctx.clearRect(0, 0, overlay.width, overlay.height);
   emptyState.hidden = false;
-  setCameraUiActive(false);
   setControls(false);
   setStatus("Camera stopped");
 }
@@ -245,7 +239,6 @@ function drawZone(zone) {
   const y = zone.y * overlay.height;
   const width = zone.width * overlay.width;
   const height = zone.height * overlay.height;
-  const handleSize = Math.max(18, overlay.width / 40);
 
   ctx.save();
   ctx.fillStyle = "rgba(105, 229, 157, 0.12)";
@@ -255,19 +248,6 @@ function drawZone(zone) {
   ctx.fillRect(x, y, width, height);
   ctx.strokeRect(x, y, width, height);
   ctx.setLineDash([]);
-
-  ctx.fillStyle = "#69e59d";
-  for (const handle of zoneHandles(zone)) {
-    ctx.beginPath();
-    ctx.arc(
-      handle.x * overlay.width,
-      handle.y * overlay.height,
-      handleSize / 2,
-      0,
-      Math.PI * 2
-    );
-    ctx.fill();
-  }
 
   const label = "QUEUE ZONE";
   ctx.font = `800 ${Math.max(18, overlay.width / 34)}px system-ui`;
@@ -328,123 +308,21 @@ function rectFromPoints(a, b) {
   };
 }
 
-function clampZone(zone) {
-  const width = Math.min(1, Math.max(MIN_ZONE_SIZE, zone.width));
-  const height = Math.min(1, Math.max(MIN_ZONE_SIZE, zone.height));
-
-  return {
-    x: Math.min(1 - width, Math.max(0, zone.x)),
-    y: Math.min(1 - height, Math.max(0, zone.y)),
-    width,
-    height
-  };
-}
-
-function zoneHandles(zone) {
-  return [
-    { name: "nw", x: zone.x, y: zone.y },
-    { name: "ne", x: zone.x + zone.width, y: zone.y },
-    { name: "sw", x: zone.x, y: zone.y + zone.height },
-    { name: "se", x: zone.x + zone.width, y: zone.y + zone.height }
-  ];
-}
-
-function pointInZone(point, zone) {
-  return (
-    point.x >= zone.x &&
-    point.x <= zone.x + zone.width &&
-    point.y >= zone.y &&
-    point.y <= zone.y + zone.height
-  );
-}
-
-function nearestHandle(point, zone) {
-  return zoneHandles(zone).find((handle) => {
-    return Math.hypot(point.x - handle.x, point.y - handle.y) <= HANDLE_RADIUS;
-  });
-}
-
-function zoneFromHandleDrag(handle, fixedCorner, point) {
-  if (handle === "nw" || handle === "ne") {
-    point.y = Math.min(fixedCorner.y - MIN_ZONE_SIZE, point.y);
-  } else {
-    point.y = Math.max(fixedCorner.y + MIN_ZONE_SIZE, point.y);
-  }
-
-  if (handle === "nw" || handle === "sw") {
-    point.x = Math.min(fixedCorner.x - MIN_ZONE_SIZE, point.x);
-  } else {
-    point.x = Math.max(fixedCorner.x + MIN_ZONE_SIZE, point.x);
-  }
-
-  return rectFromPoints(fixedCorner, point);
-}
-
-function updateCountFromZone() {
-  clearZoneBtn.disabled = !queueZone;
-  currentCount = countPeople(lastPredictions);
-  countEl.textContent = String(currentCount);
-}
-
 overlay.addEventListener("pointerdown", (event) => {
   if (!running || wholeFrameInput.checked) return;
   overlay.setPointerCapture(event.pointerId);
-  const point = normalizedPointer(event);
-  const handle = queueZone && nearestHandle(point, queueZone);
-
-  if (handle) {
-    const fixedCorner = {
-      nw: { x: queueZone.x + queueZone.width, y: queueZone.y + queueZone.height },
-      ne: { x: queueZone.x, y: queueZone.y + queueZone.height },
-      sw: { x: queueZone.x + queueZone.width, y: queueZone.y },
-      se: { x: queueZone.x, y: queueZone.y }
-    }[handle.name];
-
-    zoneDrag = { mode: "resize", handle: handle.name, fixedCorner };
-  } else if (queueZone && pointInZone(point, queueZone)) {
-    zoneDrag = {
-      mode: "move",
-      offsetX: point.x - queueZone.x,
-      offsetY: point.y - queueZone.y
-    };
-  } else {
-    drawingStart = point;
-    drawingNow = point;
-  }
-
+  drawingStart = normalizedPointer(event);
+  drawingNow = drawingStart;
   redraw();
 });
 
 overlay.addEventListener("pointermove", (event) => {
-  const point = normalizedPointer(event);
-
-  if (zoneDrag?.mode === "move") {
-    queueZone = clampZone({
-      ...queueZone,
-      x: point.x - zoneDrag.offsetX,
-      y: point.y - zoneDrag.offsetY
-    });
-    updateCountFromZone();
-  } else if (zoneDrag?.mode === "resize") {
-    queueZone = clampZone(zoneFromHandleDrag(zoneDrag.handle, zoneDrag.fixedCorner, point));
-    updateCountFromZone();
-  } else if (drawingStart) {
-    drawingNow = point;
-  } else {
-    return;
-  }
-
+  if (!drawingStart) return;
+  drawingNow = normalizedPointer(event);
   redraw();
 });
 
 function finishDrawing(event) {
-  if (zoneDrag) {
-    zoneDrag = null;
-    updateCountFromZone();
-    redraw();
-    return;
-  }
-
   if (!drawingStart) return;
 
   drawingNow = normalizedPointer(event);
@@ -452,11 +330,13 @@ function finishDrawing(event) {
   drawingStart = null;
   drawingNow = null;
 
-  if (zone.width > MIN_ZONE_SIZE && zone.height > MIN_ZONE_SIZE) {
-    queueZone = clampZone(zone);
+  if (zone.width > 0.03 && zone.height > 0.03) {
+    queueZone = zone;
   }
 
-  updateCountFromZone();
+  clearZoneBtn.disabled = !queueZone;
+  currentCount = countPeople(lastPredictions);
+  countEl.textContent = String(currentCount);
   redraw();
 }
 
@@ -464,7 +344,6 @@ overlay.addEventListener("pointerup", finishDrawing);
 overlay.addEventListener("pointercancel", () => {
   drawingStart = null;
   drawingNow = null;
-  zoneDrag = null;
   redraw();
 });
 
@@ -481,7 +360,8 @@ switchBtn.addEventListener("click", async () => {
 clearZoneBtn.addEventListener("click", () => {
   queueZone = null;
   clearZoneBtn.disabled = true;
-  updateCountFromZone();
+  currentCount = countPeople(lastPredictions);
+  countEl.textContent = String(currentCount);
   redraw();
 });
 
@@ -590,4 +470,3 @@ if ("serviceWorker" in navigator) {
 updateConfidenceLabel();
 renderReadingSummary();
 setControls(false);
-setCameraUiActive(false);
