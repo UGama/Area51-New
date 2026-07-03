@@ -137,6 +137,10 @@ h2 {
   user-select: none;
 }
 
+.stage.camera-off {
+  touch-action: pan-y;
+}
+
 video,
 canvas {
   position: absolute;
@@ -155,6 +159,11 @@ canvas {
   touch-action: none;
 }
 
+.stage.camera-off canvas,
+.stage.camera-off video {
+  pointer-events: none;
+}
+
 .empty-state {
   position: absolute;
   z-index: 3;
@@ -166,6 +175,10 @@ canvas {
   text-align: center;
   color: var(--muted);
   pointer-events: none;
+}
+
+.empty-state[hidden] {
+  display: none;
 }
 
 .empty-state strong {
